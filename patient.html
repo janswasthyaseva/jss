@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>My Health – Jan Swasthya Seva</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <style>
+    body { font-family: Arial; margin:20px; background:#f4f6f8; }
+    h2 { border-bottom:1px solid #ccc; padding-bottom:5px; }
+    .section {
+      background:#fff; padding:15px;
+      margin-bottom:20px; border-radius:6px;
+    }
+    .label { font-weight:bold; margin-top:10px; }
+    .value { margin-top:5px; white-space:pre-wrap; }
+    button {
+      width:100%; padding:15px; font-size:18px;
+      background:#007bff; color:#fff;
+      border:none; border-radius:6px;
+    }
+    .muted { color:#666; font-size:14px; }
+  </style>
+</head>
+
+<body>
+
+<h2>My Health Summary</h2>
+
+<div class="section">
+  <div class="label">Patient Name</div>
+  <div id="name" class="value"></div>
+
+  <div class="label">Diagnosis</div>
+  <div id="diagnosis" class="value"></div>
+
+  <div class="label">Medicines</div>
+  <div id="medicines" class="value"></div>
+
+  <div class="label">Risk Level</div>
+  <div id="risk" class="value"></div>
+
+  <div class="label">Discharged On</div>
+  <div id="discharged" class="value"></div>
+</div>
+
+<div class="section">
+  <p class="muted">
+    Jan Swasthya Seva will support you during recovery.
+    If you have concerns, you can request help below.
+  </p>
+  <button onclick="requestHelp()">Request Help</button>
+</div>
+
+<script>
+const WEBAPP_URL = "https://script.google.com/macros/s/AKfycbx_gAByhgJTy9k7KcS983n3vWpoeI2w-QTj0Uq9xZqaCNbWZsUeyX6UngNdL-5L6XJX/exec";
+const token = new URLSearchParams(window.location.search).get("token");
+
+async function loadPatient() {
+  if (!token) {
+    alert("Invalid access link");
+    return;
+  }
+
+  const res = await fetch(
+    WEBAPP_URL + "?action=getPatientAccess&token=" + token
+  );
+  const out = await res.json();
+
+  if (out.status !== "success") {
+    alert("Access expired or invalid");
+    return;
+  }
+
+  const d = out.data;
+  name.innerText = d.patient_name;
+  diagnosis.innerText = d.diagnosis;
+  medicines.innerText = d.medicines;
+  risk.innerText = d.risk_level;
+  discharged.innerText = new Date(d.discharged_at).toLocaleString();
+}
+
+function requestHelp() {
+  alert(
+    "Your request has been noted.\nA Jan Swasthya Seva nurse will contact you if needed."
+  );
+  // Next phase: structured intake + nurse dashboard
+}
+
+loadPatient();
+</script>
+
+</body>
+</html>
