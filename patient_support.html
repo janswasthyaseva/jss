@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Get Health Support – Jan Swasthya Seva</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <style>
+    body { font-family: Arial; background:#f4f6f8; padding:15px; }
+    h2 { margin-bottom:5px; }
+    .card {
+      background:#fff;
+      padding:15px;
+      border-radius:6px;
+      margin-bottom:15px;
+    }
+    label { font-weight:bold; display:block; margin-top:10px; }
+    select, textarea, button {
+      width:100%;
+      padding:12px;
+      margin-top:6px;
+      font-size:15px;
+    }
+    textarea { resize:vertical; }
+    button {
+      background:#007bff;
+      color:#fff;
+      border:none;
+      border-radius:6px;
+      font-size:16px;
+    }
+    .info {
+      font-size:13px;
+      color:#555;
+      margin-bottom:10px;
+    }
+    .footer {
+      font-size:12px;
+      color:#666;
+      text-align:center;
+      margin-top:20px;
+    }
+  </style>
+</head>
+
+<body>
+
+<h2>Get Health Support</h2>
+<div class="info">
+  This form connects you with the Jan Swasthya Seva care team.  
+  Please choose the most appropriate option.
+</div>
+
+<div class="card">
+  <label>What is your concern?</label>
+  <select id="concernType">
+    <option value="">Select</option>
+    <option>Medication doubt</option>
+    <option>New symptom</option>
+    <option>Not improving</option>
+    <option>Side effects</option>
+    <option>Emergency</option>
+    <option>Other</option>
+  </select>
+
+  <label>Describe your issue</label>
+  <textarea id="message" rows="5"
+    placeholder="Please describe what you are experiencing..."></textarea>
+
+  <button onclick="submitSupport()">Submit</button>
+</div>
+
+<div class="footer">
+  Jan Swasthya Seva • Patient Support
+</div>
+
+<script>
+const WEBAPP_URL =
+  "https://script.google.com/macros/s/AKfycbx_gAByhgJTy9k7KcS983n3vWpoeI2w-QTj0Uq9xZqaCNbWZsUeyX6UngNdL-5L6XJX/exec";
+
+const token = new URLSearchParams(window.location.search).get("token");
+
+async function submitSupport() {
+  if (!token) {
+    alert("Invalid access link");
+    return;
+  }
+
+  if (!concernType.value || !message.value.trim()) {
+    alert("Please fill all fields");
+    return;
+  }
+
+  const payload = {
+    action: "PATIENT_SUPPORT",
+    token: token,
+    concern_type: concernType.value,
+    message: message.value
+  };
+
+  const res = await fetch(WEBAPP_URL, {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+
+  const out = await res.json();
+
+  if (out.status === "RECEIVED") {
+    alert("Your request has been received. Our team will contact you if needed.");
+    concernType.value = "";
+    message.value = "";
+  } else {
+    alert(out.error || "Unable to submit request");
+  }
+}
+</script>
+
+</body>
+</html>
