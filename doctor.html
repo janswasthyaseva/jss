@@ -22,6 +22,9 @@
       border-radius:6px;
       font-size:16px;
     }
+    .secondary {
+      background:#6c757d;
+    }
     .note {
       border-left:4px solid #007bff;
       padding-left:10px;
@@ -59,6 +62,10 @@
 <div class="card">
   <h3>Clinical Note</h3>
 
+  <button class="secondary" onclick="copyLastNote()">
+    Copy From Last Note
+  </button>
+
   <label>Chief Complaints / Findings</label>
   <textarea id="noteContent" rows="6"></textarea>
 
@@ -71,13 +78,16 @@
 </div>
 
 <script>
-const WEBAPP_URL = "https://script.google.com/macros/s/AKfycbx_gAByhgJTy9k7KcS983n3vWpoeI2w-QTj0Uq9xZqaCNbWZsUeyX6UngNdL-5L6XJX/exec";
+const WEBAPP_URL =
+  "https://script.google.com/macros/s/AKfycbx_gAByhgJTy9k7KcS983n3vWpoeI2w-QTj0Uq9xZqaCNbWZsUeyX6UngNdL-5L6XJX/exec";
 
 /* ================= LOAD PATIENTS ================= */
 async function loadPatients() {
   if (!hid.value) return;
 
-  const res = await fetch(`${WEBAPP_URL}?action=ADMIN_PATIENTS&hospital_id=${hid.value}`);
+  const res = await fetch(
+    `${WEBAPP_URL}?action=ADMIN_PATIENTS&hospital_id=${hid.value}`
+  );
   const data = await res.json();
 
   patientSelect.innerHTML = "";
@@ -108,11 +118,34 @@ async function loadNotes() {
     const div = document.createElement("div");
     div.className = "note";
     div.innerHTML = `
-      <div class="small">${n.time} | ${n.doctor} (${n.type})</div>
+      <div class="small">
+        ${n.time} | ${n.doctor} (${n.type})
+      </div>
       <div>${n.content}</div>
     `;
     notes.appendChild(div);
   });
+}
+
+/* ================= COPY LAST NOTE ================= */
+async function copyLastNote() {
+  if (!patientSelect.value) {
+    alert("Select a patient first");
+    return;
+  }
+
+  const res = await fetch(
+    `${WEBAPP_URL}?action=DOCTOR_GET_NOTES&patient_id=${patientSelect.value}`
+  );
+  const data = await res.json();
+
+  if (!data || data.length === 0) {
+    alert("No previous note found");
+    return;
+  }
+
+  const last = data[data.length - 1];
+  noteContent.value = last.content;
 }
 
 /* ================= SAVE NOTE ================= */
