@@ -7,23 +7,27 @@
   <style>
     body { font-family: Arial; margin:20px; background:#f8f9fa; }
     h2 { border-bottom:1px solid #ccc; padding-bottom:5px; }
+
     .section {
       background:#fff;
       padding:15px;
       margin-bottom:20px;
       border-radius:6px;
     }
+
     label {
       font-weight:bold;
       display:block;
       margin-top:10px;
     }
+
     input, textarea, select {
       width:100%;
       padding:10px;
       margin-top:5px;
       font-size:15px;
     }
+
     button {
       width:100%;
       padding:15px;
@@ -34,6 +38,7 @@
       border-radius:6px;
       cursor:pointer;
     }
+
     @media print {
       button { display:none; }
       body { background:#fff; }
@@ -45,16 +50,31 @@
 
 <h2>Discharge Summary</h2>
 
+<!-- STATUS BANNER -->
+<div id="statusBanner"
+     style="display:none;
+            background:#e8f5e9;
+            color:#2e7d32;
+            padding:10px;
+            margin-bottom:15px;
+            border-radius:6px;
+            font-weight:bold;">
+  ✔ Discharge completed. This record is now read-only.
+</div>
+
+<!-- HOSPITAL -->
 <div class="section">
   <label>Hospital Name</label>
   <input id="hospitalName" readonly>
 </div>
 
+<!-- PATIENT SELECTION -->
 <div class="section">
   <label>Hospital Patient ID *</label>
   <select id="hospitalPatientId"></select>
 </div>
 
+<!-- CLINICAL SUMMARY -->
 <div class="section">
   <h3>Clinical Summary</h3>
 
@@ -76,6 +96,7 @@
   </select>
 </div>
 
+<!-- DOCTOR -->
 <div class="section">
   <h3>Treating Doctor</h3>
 
@@ -86,6 +107,7 @@
   <input id="doctorReg">
 </div>
 
+<!-- DISCHARGE TIME -->
 <div class="section">
   <label>Discharge Date & Time</label>
   <input id="dischargeTime" readonly>
@@ -138,7 +160,6 @@ async function loadPatients() {
     sel.appendChild(o);
   });
 
-  // trigger auto-fill for first patient
   loadAutoFill(sel.value);
 }
 
@@ -168,6 +189,15 @@ async function loadAutoFill(pid) {
   }
 }
 
+/* ================= LOCK UI AFTER DISCHARGE ================= */
+function lockDischargeUI() {
+  document
+    .querySelectorAll("input, textarea, select, button")
+    .forEach(el => el.disabled = true);
+
+  document.getElementById("statusBanner").style.display = "block";
+}
+
 /* ================= FINALISE DISCHARGE ================= */
 async function finaliseDischarge() {
   const payload = {
@@ -190,6 +220,7 @@ async function finaliseDischarge() {
   const out = await res.json();
 
   if (out.status === "DISCHARGED") {
+    lockDischargeUI();
     window.print();
   } else {
     alert(out.error || "Discharge failed");
