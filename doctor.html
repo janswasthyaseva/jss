@@ -7,32 +7,40 @@
   <style>
     body { font-family: Arial; margin:20px; background:#f4f6f8; }
     h2 { border-bottom:1px solid #ccc; padding-bottom:5px; }
+
     .section {
       background:#fff;
       padding:15px;
       margin-bottom:20px;
       border-radius:6px;
     }
+
     label {
       font-weight:bold;
-      margin-top:10px;
       display:block;
+      margin-top:10px;
     }
+
     input, textarea, select {
       width:100%;
       padding:10px;
       margin-top:5px;
       font-size:15px;
     }
+
     button {
-      width:100%;
-      padding:14px;
+      padding:10px 14px;
+      margin:5px 5px 0 0;
       background:#007bff;
       color:#fff;
       border:none;
-      border-radius:6px;
-      font-size:16px;
+      border-radius:5px;
       cursor:pointer;
+      font-size:14px;
+    }
+
+    .copy-buttons button {
+      background:#6c757d;
     }
   </style>
 </head>
@@ -41,7 +49,7 @@
 
 <h2>Clinical Notes</h2>
 
-<!-- Patient selection -->
+<!-- PATIENT SELECTION -->
 <div class="section">
   <label>Patient (Admitted Only) *</label>
   <select id="hospitalPatientId"></select>
@@ -53,7 +61,17 @@
   </select>
 </div>
 
-<!-- Clinical content -->
+<!-- COPY FORWARD -->
+<div class="section copy-buttons">
+  <strong>Copy from last clinical note:</strong><br><br>
+  <button type="button" onclick="copyField('comorbidities')">Comorbidities</button>
+  <button type="button" onclick="copyField('examination')">Examination</button>
+  <button type="button" onclick="copyField('provisional_diagnosis')">Diagnosis</button>
+  <button type="button" onclick="copyField('investigations')">Investigations</button>
+  <button type="button" onclick="copyField('treatment')">Treatment</button>
+</div>
+
+<!-- CLINICAL DETAILS -->
 <div class="section">
   <label>Chief Complaints</label>
   <textarea id="chiefComplaints"></textarea>
@@ -78,7 +96,7 @@ CNS:
 Other:"></textarea>
 
   <label>Provisional Diagnosis</label>
-  <textarea id="provisionalDiagnosis"></textarea>
+  <textarea id="provisional_diagnosis"></textarea>
 
   <label>Investigations</label>
   <textarea id="investigations"></textarea>
@@ -87,7 +105,7 @@ Other:"></textarea>
   <textarea id="treatment"></textarea>
 </div>
 
-<!-- Doctor / Nurse -->
+<!-- DOCTOR -->
 <div class="section">
   <label>Doctor / Nurse Name *</label>
   <input id="doctorName">
@@ -96,18 +114,23 @@ Other:"></textarea>
   <input id="doctorReg">
 </div>
 
-<button onclick="saveNote()">Save Clinical Note</button>
+<button onclick="saveClinicalNote()">Save Clinical Note</button>
 
 <script>
+/* ================= CONFIG ================= */
 const WEBAPP_URL =
   "https://script.google.com/macros/s/AKfycbx_gAByhgJTy9k7KcS983n3vWpoeI2w-QTj0Uq9xZqaCNbWZsUeyX6UngNdL-5L6XJX/exec";
 
 const hid = new URLSearchParams(window.location.search).get("hid");
 
-/* Load admitted patients into dropdown */
+/* ================= COPY BUFFER ================= */
+let copyBuffer = {};
+
+/* ================= LOAD ADMITTED PATIENTS ================= */
 async function loadPatients() {
   const res = await fetch(
-    WEBAPP_URL + "?action=getAdmittedPatients&hospital_id=" + hid
+    WEBAPP_URL +
+      "?action=getAdmittedPatients&hospital_id=" + hid
   );
   const out = await res.json();
 
@@ -115,24 +138,51 @@ async function loadPatients() {
   sel.innerHTML = "";
 
   if (out.status !== "success" || out.data.length === 0) {
-    const opt = document.createElement("option");
-    opt.textContent = "No admitted patients";
-    opt.disabled = true;
-    sel.appendChild(opt);
+    const o = document.createElement("option");
+    o.textContent = "No admitted patients";
+    o.disabled = true;
+    sel.appendChild(o);
     return;
   }
 
   out.data.forEach(p => {
-    const opt = document.createElement("option");
-    opt.value = p.hospital_patient_id;
-    opt.textContent =
+    const o = document.createElement("option");
+    o.value = p.hospital_patient_id;
+    o.textContent =
       p.hospital_patient_id + " — " + p.patient_name;
-    sel.appendChild(opt);
+    sel.appendChild(o);
   });
+
+  loadCopyForward(sel.value);
 }
 
-/* Save clinical note */
-async function saveNote() {
+/* ================= COPY FORWARD LOAD ================= */
+async function loadCopyForward(pid) {
+  if (!pid) return;
+
+  const res = await fetch(
+    WEBAPP_URL +
+      "?action=getCopyForwardData" +
+      "&hospital_id=" + hid +
+      "&hospital_patient_id=" + pid
+  );
+  const out = await res.json();
+
+  if (out.status === "success" && out.data.hasData) {
+    copyBuffer = out.data;
+  } else {
+    copyBuffer = {};
+  }
+}
+
+/* ================= COPY FIELD ================= */
+function copyField(field) {
+  if (!copyBuffer[field]) return;
+  document.getElementById(field).value = copyBuffer[field];
+}
+
+/* ================= SAVE NOTE ================= */
+async function saveClinicalNote() {
   const payload = {
     action: "saveClinicalNote",
     hospital_id: hid,
@@ -141,7 +191,7 @@ async function saveNote() {
     chief_complaints: chiefComplaints.value,
     comorbidities: comorbidities.value,
     examination: examination.value,
-    provisional_diagnosis: provisionalDiagnosis.value,
+    provisional_diagnosis: provisional_diagnosis.value,
     investigations: investigations.value,
     treatment: treatment.value,
     doctor_name: doctorName.value,
@@ -156,13 +206,19 @@ async function saveNote() {
   const out = await res.json();
 
   if (out.status === "success") {
-    alert("Clinical note saved successfully");
-    document.querySelectorAll("textarea").forEach(t => t.value = "");
+    alert("Clinical note saved");
+    chiefComplaints.value = "";
   } else {
-    alert("Error: " + (out.error || "Unable to save note"));
+    alert(out.error || "Unable to save note");
   }
 }
 
+/* ================= EVENTS ================= */
+hospitalPatientId.addEventListener("change", function () {
+  loadCopyForward(this.value);
+});
+
+/* ================= BOOT ================= */
 loadPatients();
 </script>
 
