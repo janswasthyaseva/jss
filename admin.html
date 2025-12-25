@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Hospital Admin – Jan Swasthya Seva</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <style>
+    body { font-family: Arial; margin:20px; background:#f4f6f8; }
+    h2 { border-bottom:1px solid #ccc; padding-bottom:5px; }
+    .tabs { display:flex; margin-bottom:15px; }
+    .tab {
+      padding:10px 20px;
+      background:#ddd;
+      margin-right:10px;
+      cursor:pointer;
+      border-radius:6px;
+    }
+    .tab.active { background:#007bff; color:#fff; }
+    table {
+      width:100%;
+      border-collapse:collapse;
+      background:#fff;
+    }
+    th, td {
+      padding:10px;
+      border-bottom:1px solid #eee;
+      text-align:left;
+    }
+    th { background:#f0f0f0; }
+    .hidden { display:none; }
+  </style>
+</head>
+
+<body>
+
+<h2>Hospital Admin</h2>
+
+<div class="tabs">
+  <div class="tab active" onclick="showTab('UNDER_TREATMENT')">Under Treatment</div>
+  <div class="tab" onclick="showTab('DISCHARGED')">Discharged</div>
+</div>
+
+<table id="table">
+  <thead>
+    <tr>
+      <th>Hospital Patient ID</th>
+      <th>Name</th>
+      <th>Age</th>
+      <th>Gender</th>
+      <th>Contact</th>
+      <th>Status</th>
+    </tr>
+  </thead>
+  <tbody></tbody>
+</table>
+
+<script>
+const WEBAPP_URL = "https://script.google.com/macros/s/AKfycbx_gAByhgJTy9k7KcS983n3vWpoeI2w-QTj0Uq9xZqaCNbWZsUeyX6UngNdL-5L6XJX/exec";
+const hid = new URLSearchParams(window.location.search).get("hid");
+let currentStatus = "UNDER_TREATMENT";
+
+function showTab(status) {
+  currentStatus = status;
+  document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+  event.target.classList.add("active");
+  loadPatients();
+}
+
+async function loadPatients() {
+  const res = await fetch(
+    WEBAPP_URL + "?action=getPatients&hospital_id=" + hid + "&status=" + currentStatus
+  );
+  const out = await res.json();
+
+  const tbody = document.querySelector("#table tbody");
+  tbody.innerHTML = "";
+
+  if (out.status !== "success") return;
+
+  out.data.forEach(p => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${p.hospital_patient_id}</td>
+      <td>${p.patient_name}</td>
+      <td>${p.age}</td>
+      <td>${p.gender}</td>
+      <td>${p.contact}</td>
+      <td>${p.status}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+loadPatients();
+</script>
+
+</body>
+</html>
