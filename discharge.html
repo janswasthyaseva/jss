@@ -1,24 +1,39 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Hospital Discharge – Jan Swasthya Seva</title>
+  <title>Patient Discharge – Jan Swasthya Seva</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
   <style>
     body { font-family: Arial; margin:20px; background:#f8f9fa; }
-    h2,h3 { border-bottom:1px solid #ccc; padding-bottom:5px; }
-    .section { background:#fff; padding:15px; margin-bottom:20px; border-radius:6px; }
-    label { font-weight:bold; display:block; margin-top:10px; }
+    h2 { border-bottom:1px solid #ccc; padding-bottom:5px; }
+    .section {
+      background:#fff;
+      padding:15px;
+      margin-bottom:20px;
+      border-radius:6px;
+    }
+    label {
+      font-weight:bold;
+      display:block;
+      margin-top:10px;
+    }
     input, textarea, select {
-      width:100%; padding:10px; margin-top:5px; font-size:15px;
+      width:100%;
+      padding:10px;
+      margin-top:5px;
+      font-size:15px;
     }
     button {
-      width:100%; padding:15px; font-size:18px;
-      background:#007bff; color:#fff; border:none; border-radius:6px;
+      width:100%;
+      padding:15px;
+      font-size:18px;
+      background:#007bff;
+      color:#fff;
+      border:none;
+      border-radius:6px;
+      cursor:pointer;
     }
-    button.secondary { background:#28a745; margin-top:10px; }
-    .hidden { display:none; }
-
     @media print {
       button { display:none; }
       body { background:#fff; }
@@ -36,27 +51,8 @@
 </div>
 
 <div class="section">
-  <h3>Patient Details</h3>
-
   <label>Hospital Patient ID *</label>
-  <input id="hospitalPatientId">
-
-  <label>Patient Name *</label>
-  <input id="patientName">
-
-  <label>Age *</label>
-  <input id="age" type="number">
-
-  <label>Gender *</label>
-  <select id="gender">
-    <option value="">Select</option>
-    <option>Male</option>
-    <option>Female</option>
-    <option>Other</option>
-  </select>
-
-  <label>Contact Number *</label>
-  <input id="contact">
+  <select id="hospitalPatientId"></select>
 </div>
 
 <div class="section">
@@ -81,39 +77,108 @@
 </div>
 
 <div class="section">
+  <h3>Treating Doctor</h3>
+
+  <label>Doctor Name *</label>
+  <input id="doctorName">
+
+  <label>Registration Number *</label>
+  <input id="doctorReg">
+</div>
+
+<div class="section">
   <label>Discharge Date & Time</label>
   <input id="dischargeTime" readonly>
 </div>
 
-<button onclick="finalizeDischarge()">Finalize Discharge</button>
-<button id="pdfBtn" class="secondary hidden" onclick="window.print()">Download / Print PDF</button>
+<button onclick="finaliseDischarge()">Generate / Download / Print PDF</button>
 
 <script>
-const WEBAPP_URL = "https://script.google.com/macros/s/AKfycbx_gAByhgJTy9k7KcS983n3vWpoeI2w-QTj0Uq9xZqaCNbWZsUeyX6UngNdL-5L6XJX/exec";
+/* ================= CONFIG ================= */
+const WEBAPP_URL =
+  "https://script.google.com/macros/s/AKfycbx_gAByhgJTy9k7KcS983n3vWpoeI2w-QTj0Uq9xZqaCNbWZsUeyX6UngNdL-5L6XJX/exec";
 
 const hid = new URLSearchParams(window.location.search).get("hid");
-document.getElementById("dischargeTime").value = new Date().toLocaleString();
 
+/* ================= INIT ================= */
+document.getElementById("dischargeTime").value =
+  new Date().toLocaleString();
+
+/* ================= LOAD HOSPITAL ================= */
 async function loadHospital() {
-  if (!hid) return;
   const res = await fetch(WEBAPP_URL + "?hid=" + hid);
-  const data = await res.json();
-  if (data.name) hospitalName.value = data.name;
+  const out = await res.json();
+  if (out.name) hospitalName.value = out.name;
 }
-loadHospital();
 
-async function finalizeDischarge() {
+/* ================= LOAD ADMITTED PATIENTS ================= */
+async function loadPatients() {
+  const res = await fetch(
+    WEBAPP_URL +
+      "?action=getAdmittedPatients&hospital_id=" + hid
+  );
+  const out = await res.json();
+
+  const sel = document.getElementById("hospitalPatientId");
+  sel.innerHTML = "";
+
+  if (out.status !== "success" || out.data.length === 0) {
+    const o = document.createElement("option");
+    o.textContent = "No admitted patients";
+    o.disabled = true;
+    sel.appendChild(o);
+    return;
+  }
+
+  out.data.forEach(p => {
+    const o = document.createElement("option");
+    o.value = p.hospital_patient_id;
+    o.textContent =
+      p.hospital_patient_id + " — " + p.patient_name;
+    sel.appendChild(o);
+  });
+
+  // trigger auto-fill for first patient
+  loadAutoFill(sel.value);
+}
+
+/* ================= AUTO-FILL FROM LAST CLINICAL NOTE ================= */
+async function loadAutoFill(pid) {
+  if (!pid) return;
+
+  const res = await fetch(
+    WEBAPP_URL +
+      "?action=getDischargeAutoFill" +
+      "&hospital_id=" + hid +
+      "&hospital_patient_id=" + pid
+  );
+
+  const out = await res.json();
+
+  if (out.status === "success" && out.data.hasData) {
+    diagnosis.value = out.data.diagnosis || "";
+    medicines.value = out.data.medicines || "";
+    doctorName.value = out.data.doctor_name || "";
+    doctorReg.value = out.data.doctor_reg_no || "";
+  } else {
+    diagnosis.value = "";
+    medicines.value = "";
+    doctorName.value = "";
+    doctorReg.value = "";
+  }
+}
+
+/* ================= FINALISE DISCHARGE ================= */
+async function finaliseDischarge() {
   const payload = {
     hospital_id: hid,
     hospital_patient_id: hospitalPatientId.value,
-    patient_name: patientName.value,
-    age: age.value,
-    gender: gender.value,
-    contact: contact.value,
     diagnosis: diagnosis.value,
     medicines: medicines.value,
     followup: followup.value,
     risk: risk.value,
+    doctor_name: doctorName.value,
+    doctor_reg_no: doctorReg.value,
     discharge_datetime: new Date().toISOString()
   };
 
@@ -123,13 +188,22 @@ async function finalizeDischarge() {
   });
 
   const out = await res.json();
-  if (out.status === "saved") {
-    alert("Discharge completed successfully");
-    document.getElementById("pdfBtn").classList.remove("hidden");
+
+  if (out.status === "DISCHARGED") {
+    window.print();
   } else {
-    alert("Error: " + out.error);
+    alert(out.error || "Discharge failed");
   }
 }
+
+/* ================= EVENTS ================= */
+hospitalPatientId.addEventListener("change", function () {
+  loadAutoFill(this.value);
+});
+
+/* ================= BOOT ================= */
+loadHospital();
+loadPatients();
 </script>
 
 </body>
