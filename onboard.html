@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Jan Swasthya Seva – Hospital Onboarding</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f6f8;
+      padding: 20px;
+    }
+    .card {
+      background: #ffffff;
+      padding: 20px;
+      border-radius: 8px;
+      max-width: 500px;
+      margin: auto;
+    }
+    h2 {
+      margin-bottom: 10px;
+    }
+    label {
+      font-weight: bold;
+      margin-top: 10px;
+      display: block;
+    }
+    input, textarea {
+      width: 100%;
+      padding: 10px;
+      margin-top: 5px;
+    }
+    button {
+      width: 100%;
+      padding: 14px;
+      background: #007bff;
+      color: #fff;
+      border: none;
+      font-size: 16px;
+      margin-top: 15px;
+      cursor: pointer;
+    }
+    .note {
+      font-size: 13px;
+      color: #555;
+      margin-top: 10px;
+    }
+    .result {
+      margin-top: 20px;
+      padding: 10px;
+      background: #e8f5e9;
+      border-radius: 6px;
+      display: none;
+    }
+  </style>
+</head>
+
+<body>
+
+<div class="card">
+  <h2>Jan Swasthya Seva</h2>
+  <p><b>Hospital Onboarding</b></p>
+
+  <label>Hospital Name *</label>
+  <input id="hospital_name" placeholder="Hospital Name">
+
+  <label>Hospital Address</label>
+  <textarea id="hospital_address" placeholder="Hospital Address"></textarea>
+
+  <label>Hospital Contact Number</label>
+  <input id="hospital_contact" placeholder="Contact Number">
+
+  <label>
+    <input type="checkbox" id="consent">
+    I consent to share structured discharge data with Jan Swasthya Seva
+    for post-discharge care coordination, service improvement, and
+    anonymised research purposes.
+  </label>
+
+  <button onclick="onboardHospital()">Create Hospital Account</button>
+
+  <div class="note">
+    Jan Swasthya Seva supports post-discharge continuity of care.
+    This system does not interfere with clinical decision-making.
+  </div>
+
+  <div class="result" id="result"></div>
+</div>
+
+<script>
+const WEBAPP_URL = "https://script.google.com/macros/s/AKfycbx_gAByhgJTy9k7KcS983n3vWpoeI2w-QTj0Uq9xZqaCNbWZsUeyX6UngNdL-5L6XJX/exec";
+
+function onboardHospital() {
+  const name = document.getElementById("hospital_name").value.trim();
+  const address = document.getElementById("hospital_address").value.trim();
+  const contact = document.getElementById("hospital_contact").value.trim();
+  const consent = document.getElementById("consent").checked;
+
+  if (!name) {
+    alert("Hospital name is required");
+    return;
+  }
+
+  if (!consent) {
+    alert("Consent is mandatory to proceed");
+    return;
+  }
+
+  fetch(WEBAPP_URL, {
+    method: "POST",
+    body: JSON.stringify({
+      action: "onboardHospital",
+      hospital_name: name,
+      hospital_address: address,
+      hospital_contact: contact,
+      consent_given: true
+    })
+  })
+  .then(res => res.json())
+  .then(res => {
+    if (res.status !== "success") {
+      alert("Error: " + res.message);
+      return;
+    }
+
+    const hid = res.data.hospital_id;
+    const dischargeLink =
+      "https://YOUR_GITHUB_USERNAME.github.io/jss-discharge/?hospital_id=" + hid;
+
+    const box = document.getElementById("result");
+    box.style.display = "block";
+    box.innerHTML = `
+      <b>Hospital Onboarded Successfully</b><br><br>
+      <b>Hospital ID:</b> ${hid}<br><br>
+      <b>Discharge Page Link:</b><br>
+      <a href="${dischargeLink}" target="_blank">${dischargeLink}</a><br><br>
+      Please bookmark this link.
+    `;
+  })
+  .catch(err => {
+    alert("Network error");
+    console.error(err);
+  });
+}
+</script>
+
+</body>
+</html>
