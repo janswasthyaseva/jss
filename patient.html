@@ -1,89 +1,104 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>My Health – Jan Swasthya Seva</title>
+  <title>My Health Summary – Jan Swasthya Seva</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
   <style>
-    body { font-family: Arial; margin:20px; background:#f4f6f8; }
-    h2 { border-bottom:1px solid #ccc; padding-bottom:5px; }
-    .section {
-      background:#fff; padding:15px;
-      margin-bottom:20px; border-radius:6px;
+    body { font-family: Arial; background:#f4f6f8; padding:15px; }
+    h2 { margin-bottom:5px; }
+    .card {
+      background:#fff;
+      padding:15px;
+      border-radius:6px;
+      margin-bottom:15px;
     }
     .label { font-weight:bold; margin-top:10px; }
-    .value { margin-top:5px; white-space:pre-wrap; }
-    button {
-      width:100%; padding:15px; font-size:18px;
-      background:#007bff; color:#fff;
-      border:none; border-radius:6px;
+    .value { margin-top:4px; }
+    .risk-low { color:#2e7d32; }
+    .risk-medium { color:#f9a825; }
+    .risk-high { color:#c62828; }
+    .footer {
+      font-size:13px;
+      color:#555;
+      margin-top:20px;
+      text-align:center;
     }
-    .muted { color:#666; font-size:14px; }
+    button {
+      padding:12px;
+      width:100%;
+      border:none;
+      background:#007bff;
+      color:#fff;
+      border-radius:6px;
+      font-size:16px;
+    }
   </style>
 </head>
 
 <body>
 
 <h2>My Health Summary</h2>
+<div class="footer">Powered by Jan Swasthya Seva</div>
 
-<div class="section">
-  <div class="label">Patient Name</div>
-  <div id="name" class="value"></div>
-
-  <div class="label">Diagnosis</div>
-  <div id="diagnosis" class="value"></div>
-
-  <div class="label">Medicines</div>
-  <div id="medicines" class="value"></div>
-
-  <div class="label">Risk Level</div>
-  <div id="risk" class="value"></div>
-
-  <div class="label">Discharged On</div>
-  <div id="discharged" class="value"></div>
-</div>
-
-<div class="section">
-  <p class="muted">
-    Jan Swasthya Seva will support you during recovery.
-    If you have concerns, you can request help below.
-  </p>
-  <button onclick="requestHelp()">Request Help</button>
-</div>
+<div id="content"></div>
 
 <script>
-const WEBAPP_URL = "https://script.google.com/macros/s/AKfycbx_gAByhgJTy9k7KcS983n3vWpoeI2w-QTj0Uq9xZqaCNbWZsUeyX6UngNdL-5L6XJX/exec";
+const WEBAPP_URL =
+  "https://script.google.com/macros/s/AKfycbx_gAByhgJTy9k7KcS983n3vWpoeI2w-QTj0Uq9xZqaCNbWZsUeyX6UngNdL-5L6XJX/exec";
+
 const token = new URLSearchParams(window.location.search).get("token");
 
 async function loadPatient() {
   if (!token) {
-    alert("Invalid access link");
+    document.getElementById("content").innerHTML =
+      "<div class='card'>Invalid link</div>";
     return;
   }
 
   const res = await fetch(
-    WEBAPP_URL + "?action=getPatientAccess&token=" + token
+    `${WEBAPP_URL}?action=PATIENT_PORTAL&token=${token}`
   );
-  const out = await res.json();
+  const data = await res.json();
 
-  if (out.status !== "success") {
-    alert("Access expired or invalid");
+  if (data.error) {
+    document.getElementById("content").innerHTML =
+      "<div class='card'>Unable to load data</div>";
     return;
   }
 
-  const d = out.data;
-  name.innerText = d.patient_name;
-  diagnosis.innerText = d.diagnosis;
-  medicines.innerText = d.medicines;
-  risk.innerText = d.risk_level;
-  discharged.innerText = new Date(d.discharged_at).toLocaleString();
+  const riskClass =
+    data.risk === "High" ? "risk-high" :
+    data.risk === "Medium" ? "risk-medium" :
+    "risk-low";
+
+  document.getElementById("content").innerHTML = `
+    <div class="card">
+      <div class="label">Patient Name</div>
+      <div class="value">${data.name}</div>
+
+      <div class="label">Diagnosis</div>
+      <div class="value">${data.diagnosis}</div>
+
+      <div class="label">Medicines</div>
+      <div class="value">${data.medicines}</div>
+
+      <div class="label">Follow-up Advice</div>
+      <div class="value">${data.followup || "As advised"}</div>
+
+      <div class="label">Risk Level</div>
+      <div class="value ${riskClass}">${data.risk}</div>
+    </div>
+
+    <div class="card">
+      <button onclick="contactJSS()">Need Help? Contact Jan Swasthya Seva</button>
+    </div>
+  `;
 }
 
-function requestHelp() {
-  alert(
-    "Your request has been noted.\nA Jan Swasthya Seva nurse will contact you if needed."
-  );
-  // Next phase: structured intake + nurse dashboard
+function contactJSS() {
+  window.location.href =
+    "https://wa.me/91XXXXXXXXXX?text=I%20need%20health%20support";
 }
 
 loadPatient();
