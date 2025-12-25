@@ -1,97 +1,87 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Hospital Admin – Jan Swasthya Seva</title>
+  <title>JSS Admin – Patient Timeline</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
   <style>
-    body { font-family: Arial; margin:20px; background:#f4f6f8; }
-    h2 { border-bottom:1px solid #ccc; padding-bottom:5px; }
-    .tabs { display:flex; margin-bottom:15px; }
-    .tab {
-      padding:10px 20px;
-      background:#ddd;
-      margin-right:10px;
-      cursor:pointer;
-      border-radius:6px;
-    }
-    .tab.active { background:#007bff; color:#fff; }
-    table {
-      width:100%;
-      border-collapse:collapse;
-      background:#fff;
-    }
-    th, td {
-      padding:10px;
-      border-bottom:1px solid #eee;
-      text-align:left;
-    }
-    th { background:#f0f0f0; }
-    .hidden { display:none; }
+    body { font-family: Arial; background:#f4f6f8; padding:20px; }
+    h2 { margin-bottom:10px; }
+    .card { background:#fff; padding:15px; border-radius:6px; margin-bottom:15px; }
+    .patient { padding:10px; border-bottom:1px solid #ddd; cursor:pointer; }
+    .badge { padding:4px 8px; border-radius:4px; font-size:12px; }
+    .under { background:#ffc107; }
+    .done { background:#28a745; color:#fff; }
+    .timeline { border-left:3px solid #007bff; padding-left:15px; margin-top:10px; }
+    .event { margin-bottom:12px; }
+    .event-title { font-weight:bold; }
+    button { padding:10px 14px; background:#007bff; color:#fff; border:none; border-radius:4px; }
   </style>
 </head>
 
 <body>
 
-<h2>Hospital Admin</h2>
+<h2>Admin – Patient Timeline</h2>
 
-<div class="tabs">
-  <div class="tab active" onclick="showTab('UNDER_TREATMENT')">Under Treatment</div>
-  <div class="tab" onclick="showTab('DISCHARGED')">Discharged</div>
+<div class="card">
+  <label>Hospital ID</label>
+  <input id="hid" placeholder="Enter Hospital ID">
+  <button onclick="loadPatients()">Load Patients</button>
 </div>
 
-<table id="table">
-  <thead>
-    <tr>
-      <th>Hospital Patient ID</th>
-      <th>Name</th>
-      <th>Age</th>
-      <th>Gender</th>
-      <th>Contact</th>
-      <th>Status</th>
-    </tr>
-  </thead>
-  <tbody></tbody>
-</table>
+<div class="card" id="patientList"></div>
+
+<div class="card" id="timeline" style="display:none">
+  <h3 id="patientTitle"></h3>
+  <div id="timelineBody" class="timeline"></div>
+</div>
 
 <script>
 const WEBAPP_URL = "https://script.google.com/macros/s/AKfycbx_gAByhgJTy9k7KcS983n3vWpoeI2w-QTj0Uq9xZqaCNbWZsUeyX6UngNdL-5L6XJX/exec";
-const hid = new URLSearchParams(window.location.search).get("hid");
-let currentStatus = "UNDER_TREATMENT";
 
-function showTab(status) {
-  currentStatus = status;
-  document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
-  event.target.classList.add("active");
-  loadPatients();
-}
-
+/* ---------------- LOAD PATIENT LIST ---------------- */
 async function loadPatients() {
-  const res = await fetch(
-    WEBAPP_URL + "?action=getPatients&hospital_id=" + hid + "&status=" + currentStatus
-  );
-  const out = await res.json();
+  const hospitalId = hid.value.trim();
+  if (!hospitalId) return alert("Enter Hospital ID");
 
-  const tbody = document.querySelector("#table tbody");
-  tbody.innerHTML = "";
+  const res = await fetch(`${WEBAPP_URL}?action=ADMIN_PATIENTS&hospital_id=${hospitalId}`);
+  const data = await res.json();
 
-  if (out.status !== "success") return;
+  patientList.innerHTML = "<h3>Patients</h3>";
 
-  out.data.forEach(p => {
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td>${p.hospital_patient_id}</td>
-      <td>${p.patient_name}</td>
-      <td>${p.age}</td>
-      <td>${p.gender}</td>
-      <td>${p.contact}</td>
-      <td>${p.status}</td>
+  data.forEach(p => {
+    const div = document.createElement("div");
+    div.className = "patient";
+    div.innerHTML = `
+      <b>${p.name}</b> (${p.age}/${p.gender}) 
+      <span class="badge ${p.status === "DISCHARGED" ? "done" : "under"}">
+        ${p.status}
+      </span>
     `;
-    tbody.appendChild(tr);
+    div.onclick = () => loadTimeline(p.system_patient_id, p.name);
+    patientList.appendChild(div);
   });
 }
 
-loadPatients();
+/* ---------------- LOAD FULL TIMELINE ---------------- */
+async function loadTimeline(pid, name) {
+  const res = await fetch(`${WEBAPP_URL}?action=ADMIN_TIMELINE&patient_id=${pid}`);
+  const data = await res.json();
+
+  timeline.style.display = "block";
+  patientTitle.innerText = `Patient: ${name}`;
+  timelineBody.innerHTML = "";
+
+  data.forEach(e => {
+    const div = document.createElement("div");
+    div.className = "event";
+    div.innerHTML = `
+      <div class="event-title">${e.type} – ${e.time}</div>
+      <div>${e.content}</div>
+    `;
+    timelineBody.appendChild(div);
+  });
+}
 </script>
 
 </body>
