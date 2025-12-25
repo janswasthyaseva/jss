@@ -6,17 +6,33 @@
 
   <style>
     body { font-family: Arial; margin:20px; background:#f4f6f8; }
-    h2 { border-bottom:1px solid #ccc; }
-    .section { background:#fff; padding:15px; margin-bottom:20px; border-radius:6px; }
-    label { font-weight:bold; margin-top:10px; display:block; }
+    h2 { border-bottom:1px solid #ccc; padding-bottom:5px; }
+    .section {
+      background:#fff;
+      padding:15px;
+      margin-bottom:20px;
+      border-radius:6px;
+    }
+    label {
+      font-weight:bold;
+      margin-top:10px;
+      display:block;
+    }
     input, textarea, select {
-      width:100%; padding:10px; margin-top:5px; font-size:15px;
+      width:100%;
+      padding:10px;
+      margin-top:5px;
+      font-size:15px;
     }
     button {
-      width:100%; padding:14px;
-      background:#007bff; color:#fff;
-      border:none; border-radius:6px;
+      width:100%;
+      padding:14px;
+      background:#007bff;
+      color:#fff;
+      border:none;
+      border-radius:6px;
       font-size:16px;
+      cursor:pointer;
     }
   </style>
 </head>
@@ -25,17 +41,19 @@
 
 <h2>Clinical Notes</h2>
 
+<!-- Patient selection -->
 <div class="section">
-  <label>Hospital Patient ID *</label>
-  <input id="hospitalPatientId">
+  <label>Patient (Admitted Only) *</label>
+  <select id="hospitalPatientId"></select>
 
   <label>Encounter Type *</label>
   <select id="encounterType">
-    <option>OPD</option>
-    <option>IPD</option>
+    <option value="OPD">OPD</option>
+    <option value="IPD">IPD</option>
   </select>
 </div>
 
+<!-- Clinical content -->
 <div class="section">
   <label>Chief Complaints</label>
   <textarea id="chiefComplaints"></textarea>
@@ -44,7 +62,20 @@
   <textarea id="comorbidities"></textarea>
 
   <label>Examination</label>
-  <textarea id="examination" placeholder="BP:\nHR:\nSpO2:\nRR:\nTemp:\nCVS:\nRS:\nPA:\nCNS:\nOther:"></textarea>
+  <textarea id="examination"
+    placeholder="BP:
+HR:
+SpO2:
+RR:
+Temp:
+RBS/HGT:
+
+CVS:
+RS:
+PA:
+CNS:
+
+Other:"></textarea>
 
   <label>Provisional Diagnosis</label>
   <textarea id="provisionalDiagnosis"></textarea>
@@ -56,6 +87,7 @@
   <textarea id="treatment"></textarea>
 </div>
 
+<!-- Doctor / Nurse -->
 <div class="section">
   <label>Doctor / Nurse Name *</label>
   <input id="doctorName">
@@ -67,9 +99,39 @@
 <button onclick="saveNote()">Save Clinical Note</button>
 
 <script>
-const WEBAPP_URL = "https://script.google.com/macros/s/AKfycbx_gAByhgJTy9k7KcS983n3vWpoeI2w-QTj0Uq9xZqaCNbWZsUeyX6UngNdL-5L6XJX/exec";
+const WEBAPP_URL =
+  "https://script.google.com/macros/s/AKfycbx_gAByhgJTy9k7KcS983n3vWpoeI2w-QTj0Uq9xZqaCNbWZsUeyX6UngNdL-5L6XJX/exec";
+
 const hid = new URLSearchParams(window.location.search).get("hid");
 
+/* Load admitted patients into dropdown */
+async function loadPatients() {
+  const res = await fetch(
+    WEBAPP_URL + "?action=getAdmittedPatients&hospital_id=" + hid
+  );
+  const out = await res.json();
+
+  const sel = document.getElementById("hospitalPatientId");
+  sel.innerHTML = "";
+
+  if (out.status !== "success" || out.data.length === 0) {
+    const opt = document.createElement("option");
+    opt.textContent = "No admitted patients";
+    opt.disabled = true;
+    sel.appendChild(opt);
+    return;
+  }
+
+  out.data.forEach(p => {
+    const opt = document.createElement("option");
+    opt.value = p.hospital_patient_id;
+    opt.textContent =
+      p.hospital_patient_id + " — " + p.patient_name;
+    sel.appendChild(opt);
+  });
+}
+
+/* Save clinical note */
 async function saveNote() {
   const payload = {
     action: "saveClinicalNote",
@@ -92,13 +154,16 @@ async function saveNote() {
   });
 
   const out = await res.json();
+
   if (out.status === "success") {
-    alert("Clinical note saved");
+    alert("Clinical note saved successfully");
     document.querySelectorAll("textarea").forEach(t => t.value = "");
   } else {
-    alert("Error saving note");
+    alert("Error: " + (out.error || "Unable to save note"));
   }
 }
+
+loadPatients();
 </script>
 
 </body>
