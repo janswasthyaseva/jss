@@ -1,201 +1,135 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Clinical Notes – Jan Swasthya Seva</title>
+  <title>JSS – Doctor Console</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
   <style>
-    body { font-family: Arial; margin:20px; background:#f4f6f8; }
-    h2 { border-bottom:1px solid #ccc; padding-bottom:5px; }
-
-    .section {
-      background:#fff;
-      padding:15px;
-      margin-bottom:20px;
-      border-radius:6px;
+    body { font-family: Arial; background:#f4f6f8; padding:15px; }
+    h2 { margin-bottom:10px; }
+    .card { background:#fff; padding:15px; border-radius:6px; margin-bottom:15px; }
+    label { font-weight:bold; display:block; margin-top:10px; }
+    input, select, textarea {
+      width:100%; padding:10px; margin-top:5px; font-size:15px;
     }
-
-    label {
-      font-weight:bold;
-      display:block;
-      margin-top:10px;
-    }
-
-    input, textarea, select {
-      width:100%;
-      padding:10px;
-      margin-top:5px;
-      font-size:15px;
-    }
-
     button {
-      padding:10px 14px;
-      margin:5px 5px 0 0;
+      margin-top:12px;
+      padding:12px;
+      width:100%;
       background:#007bff;
       color:#fff;
       border:none;
-      border-radius:5px;
-      cursor:pointer;
+      border-radius:6px;
+      font-size:16px;
+    }
+    .note {
+      border-left:4px solid #007bff;
+      padding-left:10px;
+      margin-bottom:10px;
       font-size:14px;
     }
-
-    .copy-buttons button {
-      background:#6c757d;
-    }
+    .small { font-size:12px; color:#555; }
   </style>
 </head>
 
 <body>
 
-<h2>Clinical Notes</h2>
+<h2>Doctor Console</h2>
 
-<!-- PATIENT SELECTION -->
-<div class="section">
-  <label>Patient (Admitted Only) *</label>
-  <select id="hospitalPatientId"></select>
+<div class="card">
+  <label>Hospital ID</label>
+  <input id="hid" placeholder="Hospital ID">
 
-  <label>Encounter Type *</label>
-  <select id="encounterType">
-    <option value="OPD">OPD</option>
-    <option value="IPD">IPD</option>
+  <label>Patient</label>
+  <select id="patientSelect"></select>
+
+  <label>Doctor Name</label>
+  <input id="doctorName">
+
+  <label>Registration Number</label>
+  <input id="doctorReg">
+
+  <label>Visit Type</label>
+  <select id="noteType">
+    <option>OPD</option>
+    <option>IPD</option>
   </select>
 </div>
 
-<!-- COPY FORWARD -->
-<div class="section copy-buttons">
-  <strong>Copy from last clinical note:</strong><br><br>
-  <button type="button" onclick="copyField('comorbidities')">Comorbidities</button>
-  <button type="button" onclick="copyField('examination')">Examination</button>
-  <button type="button" onclick="copyField('provisional_diagnosis')">Diagnosis</button>
-  <button type="button" onclick="copyField('investigations')">Investigations</button>
-  <button type="button" onclick="copyField('treatment')">Treatment</button>
+<div class="card">
+  <h3>Clinical Note</h3>
+
+  <label>Chief Complaints / Findings</label>
+  <textarea id="noteContent" rows="6"></textarea>
+
+  <button onclick="saveNote()">Save Note</button>
 </div>
 
-<!-- CLINICAL DETAILS -->
-<div class="section">
-  <label>Chief Complaints</label>
-  <textarea id="chiefComplaints"></textarea>
-
-  <label>Comorbidities</label>
-  <textarea id="comorbidities"></textarea>
-
-  <label>Examination</label>
-  <textarea id="examination"
-    placeholder="BP:
-HR:
-SpO2:
-RR:
-Temp:
-RBS/HGT:
-
-CVS:
-RS:
-PA:
-CNS:
-
-Other:"></textarea>
-
-  <label>Provisional Diagnosis</label>
-  <textarea id="provisional_diagnosis"></textarea>
-
-  <label>Investigations</label>
-  <textarea id="investigations"></textarea>
-
-  <label>Treatment</label>
-  <textarea id="treatment"></textarea>
+<div class="card">
+  <h3>Previous Notes</h3>
+  <div id="notes"></div>
 </div>
-
-<!-- DOCTOR -->
-<div class="section">
-  <label>Doctor / Nurse Name *</label>
-  <input id="doctorName">
-
-  <label>Registration Number *</label>
-  <input id="doctorReg">
-</div>
-
-<button onclick="saveClinicalNote()">Save Clinical Note</button>
 
 <script>
-/* ================= CONFIG ================= */
-const WEBAPP_URL =
-  "https://script.google.com/macros/s/AKfycbx_gAByhgJTy9k7KcS983n3vWpoeI2w-QTj0Uq9xZqaCNbWZsUeyX6UngNdL-5L6XJX/exec";
+const WEBAPP_URL = "https://script.google.com/macros/s/AKfycbx_gAByhgJTy9k7KcS983n3vWpoeI2w-QTj0Uq9xZqaCNbWZsUeyX6UngNdL-5L6XJX/exec";
 
-const hid = new URLSearchParams(window.location.search).get("hid");
-
-/* ================= COPY BUFFER ================= */
-let copyBuffer = {};
-
-/* ================= LOAD ADMITTED PATIENTS ================= */
+/* ================= LOAD PATIENTS ================= */
 async function loadPatients() {
-  const res = await fetch(
-    WEBAPP_URL +
-      "?action=getAdmittedPatients&hospital_id=" + hid
-  );
-  const out = await res.json();
+  if (!hid.value) return;
 
-  const sel = document.getElementById("hospitalPatientId");
-  sel.innerHTML = "";
+  const res = await fetch(`${WEBAPP_URL}?action=ADMIN_PATIENTS&hospital_id=${hid.value}`);
+  const data = await res.json();
 
-  if (out.status !== "success" || out.data.length === 0) {
-    const o = document.createElement("option");
-    o.textContent = "No admitted patients";
-    o.disabled = true;
-    sel.appendChild(o);
-    return;
-  }
-
-  out.data.forEach(p => {
-    const o = document.createElement("option");
-    o.value = p.hospital_patient_id;
-    o.textContent =
-      p.hospital_patient_id + " — " + p.patient_name;
-    sel.appendChild(o);
+  patientSelect.innerHTML = "";
+  data.forEach(p => {
+    const opt = document.createElement("option");
+    opt.value = p.system_patient_id;
+    opt.text = `${p.system_patient_id} – ${p.name}`;
+    patientSelect.appendChild(opt);
   });
 
-  loadCopyForward(sel.value);
+  loadNotes();
 }
 
-/* ================= COPY FORWARD LOAD ================= */
-async function loadCopyForward(pid) {
-  if (!pid) return;
+hid.onchange = loadPatients;
+patientSelect.onchange = loadNotes;
+
+/* ================= LOAD NOTES ================= */
+async function loadNotes() {
+  if (!patientSelect.value) return;
 
   const res = await fetch(
-    WEBAPP_URL +
-      "?action=getCopyForwardData" +
-      "&hospital_id=" + hid +
-      "&hospital_patient_id=" + pid
+    `${WEBAPP_URL}?action=DOCTOR_GET_NOTES&patient_id=${patientSelect.value}`
   );
-  const out = await res.json();
+  const data = await res.json();
 
-  if (out.status === "success" && out.data.hasData) {
-    copyBuffer = out.data;
-  } else {
-    copyBuffer = {};
-  }
-}
-
-/* ================= COPY FIELD ================= */
-function copyField(field) {
-  if (!copyBuffer[field]) return;
-  document.getElementById(field).value = copyBuffer[field];
+  notes.innerHTML = "";
+  data.reverse().forEach(n => {
+    const div = document.createElement("div");
+    div.className = "note";
+    div.innerHTML = `
+      <div class="small">${n.time} | ${n.doctor} (${n.type})</div>
+      <div>${n.content}</div>
+    `;
+    notes.appendChild(div);
+  });
 }
 
 /* ================= SAVE NOTE ================= */
-async function saveClinicalNote() {
+async function saveNote() {
+  if (!hid.value || !patientSelect.value || !noteContent.value) {
+    alert("Fill required fields");
+    return;
+  }
+
   const payload = {
-    action: "saveClinicalNote",
-    hospital_id: hid,
-    hospital_patient_id: hospitalPatientId.value,
-    encounter_type: encounterType.value,
-    chief_complaints: chiefComplaints.value,
-    comorbidities: comorbidities.value,
-    examination: examination.value,
-    provisional_diagnosis: provisional_diagnosis.value,
-    investigations: investigations.value,
-    treatment: treatment.value,
+    action: "DOCTOR_SAVE_NOTE",
+    hospital_id: hid.value,
+    system_patient_id: patientSelect.value,
+    note_type: noteType.value,
+    content: noteContent.value,
     doctor_name: doctorName.value,
-    doctor_reg_no: doctorReg.value
+    doctor_reg: doctorReg.value
   };
 
   const res = await fetch(WEBAPP_URL, {
@@ -205,21 +139,14 @@ async function saveClinicalNote() {
 
   const out = await res.json();
 
-  if (out.status === "success") {
-    alert("Clinical note saved");
-    chiefComplaints.value = "";
+  if (out.status === "SAVED") {
+    noteContent.value = "";
+    loadNotes();
+    alert("Note saved");
   } else {
-    alert(out.error || "Unable to save note");
+    alert(out.error || "Save failed");
   }
 }
-
-/* ================= EVENTS ================= */
-hospitalPatientId.addEventListener("change", function () {
-  loadCopyForward(this.value);
-});
-
-/* ================= BOOT ================= */
-loadPatients();
 </script>
 
 </body>
