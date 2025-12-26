@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Hospital Admin – Jan Swasthya Seva</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f6f8;
+      padding: 20px;
+    }
+    .container {
+      max-width: 900px;
+      margin: auto;
+    }
+    h2 {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    .columns {
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+    .box {
+      background: #fff;
+      padding: 15px;
+      border-radius: 8px;
+      flex: 1;
+      min-width: 260px;
+    }
+    .patient {
+      padding: 8px;
+      border-bottom: 1px solid #eee;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    .patient:hover {
+      background: #f1f3f5;
+    }
+    .timeline {
+      margin-top: 20px;
+      background: #fff;
+      padding: 15px;
+      border-radius: 8px;
+    }
+    .event {
+      margin-bottom: 10px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid #eee;
+    }
+    .type {
+      font-weight: bold;
+    }
+    .time {
+      font-size: 12px;
+      color: #555;
+    }
+  </style>
+</head>
+
+<body>
+
+<div class="container">
+  <h2>Hospital Admin View</h2>
+
+  <div class="columns">
+    <div class="box">
+      <h3>Under Treatment</h3>
+      <div id="under"></div>
+    </div>
+
+    <div class="box">
+      <h3>Discharged</h3>
+      <div id="done"></div>
+    </div>
+  </div>
+
+  <div id="timeline" class="timeline" style="display:none;">
+    <h3>Patient Timeline</h3>
+    <div id="events"></div>
+  </div>
+</div>
+
+<script>
+const BACKEND = "https://script.google.com/macros/s/AKfycbx_gAByhgJTy9k7KcS983n3vWpoeI2w-QTj0Uq9xZqaCNbWZsUeyX6UngNdL-5L6XJX/exec";
+const params = new URLSearchParams(window.location.search);
+const hid = params.get("hid");
+
+if (!hid) alert("Invalid hospital link");
+
+/* Load patients */
+fetch(BACKEND + "?action=ADMIN_PATIENTS&hospital_id=" + hid)
+  .then(r => r.json())
+  .then(list => {
+    list.forEach(p => {
+      const d = document.createElement("div");
+      d.className = "patient";
+      d.textContent = p.name + " (" + p.id + ")";
+      d.onclick = () => loadTimeline(p.id);
+
+      if (p.status === "UNDER_TREATMENT") {
+        document.getElementById("under").appendChild(d);
+      } else {
+        document.getElementById("done").appendChild(d);
+      }
+    });
+  });
+
+/* Load timeline */
+function loadTimeline(pid) {
+  fetch(BACKEND + "?action=ADMIN_TIMELINE&patient_id=" + pid)
+    .then(r => r.json())
+    .then(events => {
+      const c = document.getElementById("events");
+      c.innerHTML = "";
+      document.getElementById("timeline").style.display = "block";
+
+      events.forEach(e => {
+        const div = document.createElement("div");
+        div.className = "event";
+        div.innerHTML = `
+          <div class="type">${e.type}</div>
+          <div class="time">${new Date(e.time).toLocaleString()}</div>
+        `;
+        c.appendChild(div);
+      });
+    });
+}
+</script>
+
+</body>
+</html>
