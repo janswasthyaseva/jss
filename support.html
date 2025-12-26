@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Patient Support – Jan Swasthya Seva</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f6f8;
+      padding: 20px;
+    }
+    .card {
+      background: #fff;
+      max-width: 600px;
+      margin: auto;
+      padding: 20px;
+      border-radius: 8px;
+    }
+    h2 {
+      text-align: center;
+      margin-bottom: 10px;
+    }
+    textarea {
+      width: 100%;
+      padding: 12px;
+      margin-top: 10px;
+      font-size: 15px;
+      min-height: 120px;
+    }
+    button {
+      width: 100%;
+      padding: 14px;
+      margin-top: 15px;
+      font-size: 16px;
+      background: #007bff;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    button:disabled {
+      background: #999;
+    }
+    .note {
+      margin-top: 10px;
+      font-size: 13px;
+      color: #555;
+      text-align: center;
+    }
+    .success {
+      background: #d4edda;
+      color: #155724;
+      padding: 15px;
+      border-radius: 6px;
+      margin-top: 20px;
+      text-align: center;
+      font-size: 15px;
+    }
+  </style>
+</head>
+
+<body>
+
+<div class="card">
+  <h2>Patient Support</h2>
+
+  <div id="form">
+    <textarea id="msg" placeholder="Please describe your concern after discharge"></textarea>
+    <button id="btn" onclick="submitSupport()">Submit</button>
+
+    <div class="note">
+      This message goes to Jan Swasthya Seva care team.<br>
+      We will guide or escalate if required.
+    </div>
+  </div>
+
+  <div id="done" class="success" style="display:none;">
+    Thank you.<br>
+    Your message has been received.<br>
+    Our team will review it.
+  </div>
+</div>
+
+<script>
+const BACKEND =
+  "https://script.google.com/macros/s/AKfycbx_gAByhgJTy9k7KcS983n3vWpoeI2w-QTj0Uq9xZqaCNbWZsUeyX6UngNdL-5L6XJX/exec";
+
+const params = new URLSearchParams(window.location.search);
+const token = params.get("token");
+
+if (!token) {
+  document.body.innerHTML =
+    "<b>Invalid access.</b>";
+}
+
+let submitting = false;
+
+function submitSupport() {
+  if (submitting) return;
+
+  const msg = document.getElementById("msg").value.trim();
+  if (!msg) {
+    alert("Please describe your concern");
+    return;
+  }
+
+  submitting = true;
+  document.getElementById("btn").disabled = true;
+
+  fetch(BACKEND, {
+    method: "POST",
+    body: JSON.stringify({
+      action: "PATIENT_SUPPORT",
+      token: token,
+      message: msg
+    })
+  })
+  .then(r => r.json())
+  .then(d => {
+    if (d.error) {
+      alert("Unable to submit request");
+      submitting = false;
+      document.getElementById("btn").disabled = false;
+      return;
+    }
+
+    document.getElementById("form").style.display = "none";
+    document.getElementById("done").style.display = "block";
+  })
+  .catch(() => {
+    alert("Network error");
+    submitting = false;
+    document.getElementById("btn").disabled = false;
+  });
+}
+</script>
+
+</body>
+</html>
