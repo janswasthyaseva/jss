@@ -72,10 +72,11 @@
   <h2>Hospital Onboarding</h2>
   <h4>Jan Swasthya Seva</h4>
 
-  <input id="hospitalName" placeholder="Hospital Name *">
-  <input id="hospitalContact" placeholder="Hospital Contact Number *">
-  <input id="hospitalAddress" placeholder="Hospital Address *">
-  <input id="hospitalLogo" placeholder="Hospital Logo URL (optional)">
+  <!-- IMPORTANT: IDs MUST match JS -->
+  <input id="hospital_name" placeholder="Hospital Name *">
+  <input id="hospital_contact" placeholder="Hospital Contact Number *">
+  <input id="hospital_address" placeholder="Hospital Address *">
+  <input id="hospital_logo" placeholder="Hospital Logo URL (optional)">
 
   <button onclick="onboardHospital()">Onboard Hospital</button>
 
@@ -92,10 +93,10 @@ const WEBAPP_URL =
 "https://script.google.com/macros/s/AKfycbx_gAByhgJTy9k7KcS983n3vWpoeI2w-QTj0Uq9xZqaCNbWZsUeyX6UngNdL-5L6XJX/exec";
 
 function onboardHospital() {
-  const name = hospitalName.value.trim();
-  const contact = hospitalContact.value.trim();
-  const address = hospitalAddress.value.trim();
-  const logo = hospitalLogo.value.trim();
+  const name = document.getElementById("hospital_name").value.trim();
+  const contact = document.getElementById("hospital_contact").value.trim();
+  const address = document.getElementById("hospital_address").value.trim();
+  const logo = document.getElementById("hospital_logo").value.trim();
 
   if (!name || !contact || !address) {
     alert("Please fill all mandatory fields");
@@ -114,9 +115,7 @@ function onboardHospital() {
 
   fetch(WEBAPP_URL, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload)
   })
   .then(res => res.json())
@@ -127,7 +126,7 @@ function onboardHospital() {
 
       alert("Hospital onboarded successfully");
 
-      result.innerHTML = `
+      document.getElementById("result").innerHTML = `
         <b>Admission Desk Link</b><br><br>
         <a href="${admissionLink}" target="_blank">${admissionLink}</a>
       `;
