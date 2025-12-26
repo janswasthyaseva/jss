@@ -1,107 +1,143 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>My Health Summary – Jan Swasthya Seva</title>
+  <title>My Health Record – Jan Swasthya Seva</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
   <style>
-    body { font-family: Arial; background:#f4f6f8; padding:15px; }
-    h2 { margin-bottom:5px; }
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f6f8;
+      padding: 20px;
+    }
     .card {
-      background:#fff;
-      padding:15px;
-      border-radius:6px;
-      margin-bottom:15px;
+      background: #fff;
+      max-width: 700px;
+      margin: auto;
+      padding: 20px;
+      border-radius: 8px;
     }
-    .label { font-weight:bold; margin-top:10px; }
-    .value { margin-top:4px; }
-    .risk-low { color:#2e7d32; }
-    .risk-medium { color:#f9a825; }
-    .risk-high { color:#c62828; }
-    .footer {
-      font-size:13px;
-      color:#555;
-      margin-top:20px;
-      text-align:center;
+    h2 {
+      text-align: center;
+      margin-bottom: 10px;
     }
+    .section {
+      margin-top: 15px;
+    }
+    .label {
+      font-weight: bold;
+      margin-bottom: 5px;
+    }
+    .value {
+      background: #f1f3f5;
+      padding: 10px;
+      border-radius: 6px;
+      font-size: 14px;
+      white-space: pre-wrap;
+    }
+    .risk {
+      padding: 10px;
+      border-radius: 6px;
+      font-weight: bold;
+      margin-top: 10px;
+    }
+    .Low { background: #d4edda; color: #155724; }
+    .Medium { background: #fff3cd; color: #856404; }
+    .High { background: #f8d7da; color: #721c24; }
     button {
-      padding:12px;
-      width:100%;
-      border:none;
-      background:#007bff;
-      color:#fff;
-      border-radius:6px;
-      font-size:16px;
+      width: 100%;
+      padding: 14px;
+      margin-top: 20px;
+      font-size: 16px;
+      background: #007bff;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    .note {
+      margin-top: 10px;
+      font-size: 12px;
+      color: #666;
+      text-align: center;
     }
   </style>
 </head>
 
 <body>
 
-<h2>My Health Summary</h2>
-<div class="footer">Powered by Jan Swasthya Seva</div>
+<div class="card" id="app">
+  <h2>My Health Record</h2>
 
-<div id="content"></div>
+  <div id="content">Loading…</div>
+</div>
 
 <script>
-const WEBAPP_URL =
-  "https://script.google.com/macros/s/AKfycbx_gAByhgJTy9k7KcS983n3vWpoeI2w-QTj0Uq9xZqaCNbWZsUeyX6UngNdL-5L6XJX/exec";
+const BACKEND = "https://script.google.com/macros/s/AKfycbx_gAByhgJTy9k7KcS983n3vWpoeI2w-QTj0Uq9xZqaCNbWZsUeyX6UngNdL-5L6XJX/exec";
+const params = new URLSearchParams(window.location.search);
+const token = params.get("token");
 
-const token = new URLSearchParams(window.location.search).get("token");
+if (!token) {
+  document.getElementById("content").innerHTML =
+    "<b>Invalid access.</b>";
+} else {
+  fetch(BACKEND + "?action=PATIENT_PORTAL&token=" + token)
+    .then(r => r.json())
+    .then(d => {
+      if (d.error === "TOKEN_EXPIRED") {
+        document.getElementById("content").innerHTML =
+          "<b>This link has expired.</b><br>Please contact Jan Swasthya Seva.";
+        return;
+      }
+      if (d.error) {
+        document.getElementById("content").innerHTML =
+          "<b>Invalid record.</b>";
+        return;
+      }
 
-async function loadPatient() {
-  if (!token) {
-    document.getElementById("content").innerHTML =
-      "<div class='card'>Invalid link</div>";
-    return;
-  }
+      document.getElementById("content").innerHTML = `
+        <div class="section">
+          <div class="label">Patient Name</div>
+          <div class="value">${d.name}</div>
+        </div>
 
-  const res = await fetch(
-    `${WEBAPP_URL}?action=PATIENT_PORTAL&token=${token}`
-  );
-  const data = await res.json();
+        <div class="section">
+          <div class="label">Diagnosis</div>
+          <div class="value">${d.diagnosis}</div>
+        </div>
 
-  if (data.error) {
-    document.getElementById("content").innerHTML =
-      "<div class='card'>Unable to load data</div>";
-    return;
-  }
+        <div class="section">
+          <div class="label">Medicines</div>
+          <div class="value">${d.medicines}</div>
+        </div>
 
-  const riskClass =
-    data.risk === "High" ? "risk-high" :
-    data.risk === "Medium" ? "risk-medium" :
-    "risk-low";
+        <div class="section">
+          <div class="label">Follow-up Advice</div>
+          <div class="value">${d.followup}</div>
+        </div>
 
-  document.getElementById("content").innerHTML = `
-    <div class="card">
-      <div class="label">Patient Name</div>
-      <div class="value">${data.name}</div>
+        <div class="risk ${d.risk}">
+          Risk Level: ${d.risk}
+        </div>
 
-      <div class="label">Diagnosis</div>
-      <div class="value">${data.diagnosis}</div>
+        <button onclick="support()">Need help after discharge?</button>
 
-      <div class="label">Medicines</div>
-      <div class="value">${data.medicines}</div>
-
-      <div class="label">Follow-up Advice</div>
-      <div class="value">${data.followup || "As advised"}</div>
-
-      <div class="label">Risk Level</div>
-      <div class="value ${riskClass}">${data.risk}</div>
-    </div>
-
-    <div class="card">
-      <button onclick="contactJSS()">Need Help? Contact Jan Swasthya Seva</button>
-    </div>
-  `;
+        <div class="note">
+          By using this service, you consent to Jan Swasthya Seva using this
+          information for care and improvement.
+        </div>
+      `;
+    })
+    .catch(() => {
+      document.getElementById("content").innerHTML =
+        "Unable to load data.";
+    });
 }
 
-function contactJSS() {
+function support() {
   window.location.href =
-    "https://wa.me/91XXXXXXXXXX?text=I%20need%20health%20support";
+    "support.html?token=" + encodeURIComponent(token);
 }
-
-loadPatient();
 </script>
 
 </body>
