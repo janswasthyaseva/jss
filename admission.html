@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Admission Desk – Jan Swasthya Seva</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f6f8;
+      padding: 20px;
+    }
+    .card {
+      background: #fff;
+      max-width: 520px;
+      margin: auto;
+      padding: 20px;
+      border-radius: 8px;
+    }
+    h2 {
+      text-align: center;
+      margin-bottom: 10px;
+    }
+    .hospital {
+      text-align: center;
+      font-size: 14px;
+      color: #555;
+      margin-bottom: 20px;
+    }
+    input, select {
+      width: 100%;
+      padding: 10px;
+      margin: 8px 0;
+      font-size: 15px;
+    }
+    button {
+      width: 100%;
+      padding: 12px;
+      font-size: 16px;
+      background: #28a745;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    button:disabled {
+      background: #999;
+    }
+    .result {
+      margin-top: 20px;
+      background: #e8f7ec;
+      padding: 15px;
+      border-radius: 6px;
+      text-align: center;
+      font-size: 15px;
+    }
+    .pid {
+      font-size: 18px;
+      font-weight: bold;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+
+<body>
+
+<div class="card">
+  <h2>Admission Desk</h2>
+  <div class="hospital" id="hospitalInfo">Loading hospital…</div>
+
+  <input id="name" placeholder="Patient Name *">
+  <input id="age" type="number" placeholder="Age *">
+  <select id="gender">
+    <option value="">Gender *</option>
+    <option>Male</option>
+    <option>Female</option>
+    <option>Other</option>
+  </select>
+
+  <button id="btn" onclick="admit()">Admit Patient</button>
+
+  <div id="out" class="result" style="display:none;"></div>
+</div>
+
+<script>
+const BACKEND = "https://script.google.com/macros/s/AKfycbx_gAByhgJTy9k7KcS983n3vWpoeI2w-QTj0Uq9xZqaCNbWZsUeyX6UngNdL-5L6XJX/exec";
+const params = new URLSearchParams(window.location.search);
+const hid = params.get("hid");
+
+if (!hid) {
+  alert("Invalid hospital link");
+}
+
+/* Load hospital details */
+fetch(BACKEND + "?action=GET_HOSPITAL&hid=" + hid)
+  .then(r => r.json())
+  .then(d => {
+    if (d.error) throw d.error;
+    document.getElementById("hospitalInfo").innerText =
+      d.name + " | " + d.address;
+  })
+  .catch(() => {
+    document.getElementById("hospitalInfo").innerText =
+      "Hospital information unavailable";
+  });
+
+let submitting = false;
+
+function admit() {
+  if (submitting) return;
+
+  const name = document.getElementById("name").value.trim();
+  const age = document.getElementById("age").value.trim();
+  const gender = document.getElementById("gender").value;
+
+  if (!name || !age || !gender) {
+    alert("Please fill all mandatory fields");
+    return;
+  }
+
+  submitting = true;
+  document.getElementById("btn").disabled = true;
+
+  fetch(BACKEND, {
+    method: "POST",
+    body: JSON.stringify({
+      action: "ADMIT_PATIENT",
+      hospital_id: hid,
+      name,
+      age,
+      gender
+    })
+  })
+  .then(r => r.json())
+  .then(d => {
+    if (!d.system_patient_id) {
+      alert("Admission failed");
+      submitting = false;
+      document.getElementById("btn").disabled = false;
+      return;
+    }
+
+    document.getElementById("out").style.display = "block";
+    document.getElementById("out").innerHTML = `
+      <div>Patient admitted successfully</div>
+      <div class="pid">Patient ID: ${d.system_patient_id}</div>
+      <div style="margin-top:8px;font-size:13px;">
+        Please note this ID on the patient file.
+      </div>
+    `;
+
+    // Reset form for next patient
+    document.getElementById("name").value = "";
+    document.getElementById("age").value = "";
+    document.getElementById("gender").value = "";
+    document.getElementById("btn").disabled = false;
+    submitting = false;
+  })
+  .catch(() => {
+    alert("Network error");
+    submitting = false;
+    document.getElementById("btn").disabled = false;
+  });
+}
+</script>
+
+</body>
+</html>
