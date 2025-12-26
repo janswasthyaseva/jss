@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Admission Desk – Jan Swasthya Seva</title>
+  <title>Doctor Desk – Jan Swasthya Seva</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
   <style>
@@ -12,52 +12,33 @@
     }
     .card {
       background: #fff;
-      max-width: 520px;
+      max-width: 700px;
       margin: auto;
       padding: 20px;
       border-radius: 8px;
     }
     h2 {
       text-align: center;
-      margin-bottom: 10px;
     }
-    .hospital {
-      text-align: center;
-      font-size: 14px;
-      color: #555;
-      margin-bottom: 20px;
-    }
-    input, select {
+    select, textarea, input {
       width: 100%;
       padding: 10px;
-      margin: 8px 0;
-      font-size: 15px;
+      margin-top: 10px;
+      font-size: 14px;
+    }
+    textarea {
+      min-height: 120px;
     }
     button {
       width: 100%;
-      padding: 12px;
-      font-size: 16px;
-      background: #28a745;
+      padding: 14px;
+      margin-top: 15px;
+      background: #007bff;
       color: #fff;
       border: none;
       border-radius: 6px;
+      font-size: 16px;
       cursor: pointer;
-    }
-    button:disabled {
-      background: #999;
-    }
-    .result {
-      margin-top: 20px;
-      background: #e8f7ec;
-      padding: 15px;
-      border-radius: 6px;
-      text-align: center;
-      font-size: 15px;
-    }
-    .pid {
-      font-size: 18px;
-      font-weight: bold;
-      margin-top: 10px;
     }
   </style>
 </head>
@@ -65,101 +46,64 @@
 <body>
 
 <div class="card">
-  <h2>Admission Desk</h2>
-  <div class="hospital" id="hospitalInfo">Loading hospital…</div>
+  <h2>Doctor Desk</h2>
 
-  <input id="name" placeholder="Patient Name *">
-  <input id="age" type="number" placeholder="Age *">
-  <select id="gender">
-    <option value="">Gender *</option>
-    <option>Male</option>
-    <option>Female</option>
-    <option>Other</option>
+  <select id="patient">
+    <option value="">Select Patient</option>
   </select>
 
-  <button id="btn" onclick="admit()">Admit Patient</button>
+  <input id="doctor" placeholder="Doctor Name *">
+  <input id="reg" placeholder="Registration Number *">
 
-  <div id="out" class="result" style="display:none;"></div>
+  <textarea id="note" placeholder="Clinical Notes *"></textarea>
+
+  <button onclick="saveNote()">Save Note</button>
 </div>
 
 <script>
 const BACKEND = "https://script.google.com/macros/s/AKfycbx_gAByhgJTy9k7KcS983n3vWpoeI2w-QTj0Uq9xZqaCNbWZsUeyX6UngNdL-5L6XJX/exec";
-const params = new URLSearchParams(window.location.search);
-const hid = params.get("hid");
+const hid = new URLSearchParams(window.location.search).get("hid");
 
-if (!hid) {
-  alert("Invalid hospital link");
-}
-
-/* Load hospital details */
-fetch(BACKEND + "?action=GET_HOSPITAL&hid=" + hid)
+/* Load patients */
+fetch(BACKEND + "?action=ADMIN_PATIENTS&hospital_id=" + hid)
   .then(r => r.json())
-  .then(d => {
-    if (d.error) throw d.error;
-    document.getElementById("hospitalInfo").innerText =
-      d.name + " | " + d.address;
-  })
-  .catch(() => {
-    document.getElementById("hospitalInfo").innerText =
-      "Hospital information unavailable";
+  .then(list => {
+    list.forEach(p => {
+      if (p.status === "UNDER_TREATMENT") {
+        const o = document.createElement("option");
+        o.value = p.id;
+        o.textContent = p.name + " (" + p.id + ")";
+        document.getElementById("patient").appendChild(o);
+      }
+    });
   });
 
-let submitting = false;
+function saveNote() {
+  const pid = document.getElementById("patient").value;
+  const doctor = document.getElementById("doctor").value.trim();
+  const reg = document.getElementById("reg").value.trim();
+  const note = document.getElementById("note").value.trim();
 
-function admit() {
-  if (submitting) return;
-
-  const name = document.getElementById("name").value.trim();
-  const age = document.getElementById("age").value.trim();
-  const gender = document.getElementById("gender").value;
-
-  if (!name || !age || !gender) {
-    alert("Please fill all mandatory fields");
+  if (!pid || !doctor || !reg || !note) {
+    alert("All fields are mandatory");
     return;
   }
-
-  submitting = true;
-  document.getElementById("btn").disabled = true;
 
   fetch(BACKEND, {
     method: "POST",
     body: JSON.stringify({
-      action: "ADMIT_PATIENT",
+      action: "DOCTOR_NOTE",
       hospital_id: hid,
-      name,
-      age,
-      gender
+      system_patient_id: pid,
+      clinical_note: note,
+      clinician_name: doctor,
+      clinician_registration: reg
     })
   })
   .then(r => r.json())
-  .then(d => {
-    if (!d.system_patient_id) {
-      alert("Admission failed");
-      submitting = false;
-      document.getElementById("btn").disabled = false;
-      return;
-    }
-
-    document.getElementById("out").style.display = "block";
-    document.getElementById("out").innerHTML = `
-      <div>Patient admitted successfully</div>
-      <div class="pid">Patient ID: ${d.system_patient_id}</div>
-      <div style="margin-top:8px;font-size:13px;">
-        Please note this ID on the patient file.
-      </div>
-    `;
-
-    // Reset form for next patient
-    document.getElementById("name").value = "";
-    document.getElementById("age").value = "";
-    document.getElementById("gender").value = "";
-    document.getElementById("btn").disabled = false;
-    submitting = false;
-  })
-  .catch(() => {
-    alert("Network error");
-    submitting = false;
-    document.getElementById("btn").disabled = false;
+  .then(() => {
+    alert("Note saved");
+    document.getElementById("note").value = "";
   });
 }
 </script>
