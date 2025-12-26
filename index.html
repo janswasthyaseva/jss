@@ -1,54 +1,62 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Jan Swasthya Seva – Hospital Onboarding</title>
+  <title>Hospital Onboarding | Jan Swasthya Seva</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
   <style>
     body {
       font-family: Arial, sans-serif;
       background: #f4f6f8;
-      padding: 20px;
+      margin: 0;
+      padding: 0;
     }
+
     .card {
+      max-width: 420px;
+      margin: 60px auto;
       background: #fff;
-      max-width: 500px;
-      margin: auto;
-      padding: 20px;
-      border-radius: 8px;
+      padding: 25px;
+      border-radius: 10px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.08);
     }
+
     h2 {
       text-align: center;
-      margin-bottom: 20px;
+      margin-bottom: 5px;
     }
-    input, textarea {
-      width: 100%;
-      padding: 10px;
-      margin: 8px 0;
-      font-size: 15px;
+
+    p {
+      text-align: center;
+      color: #666;
+      font-size: 14px;
     }
-    button {
+
+    input {
       width: 100%;
       padding: 12px;
+      margin-top: 12px;
+      font-size: 15px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+    }
+
+    button {
+      width: 100%;
+      padding: 14px;
+      margin-top: 18px;
       font-size: 16px;
-      background: #007bff;
+      background: #005eff;
       color: #fff;
       border: none;
       border-radius: 6px;
       cursor: pointer;
     }
+
     .result {
       margin-top: 20px;
-      background: #eef6ff;
-      padding: 12px;
-      border-radius: 6px;
       font-size: 14px;
       word-break: break-all;
-    }
-    .small {
-      font-size: 12px;
-      color: #666;
-      margin-top: 10px;
     }
   </style>
 </head>
@@ -56,73 +64,60 @@
 <body>
 
 <div class="card">
-  <h2>Hospital Onboarding<br><small>Jan Swasthya Seva</small></h2>
+  <h2>Hospital Onboarding</h2>
+  <p>Jan Swasthya Seva</p>
 
   <input id="name" placeholder="Hospital Name *">
   <input id="contact" placeholder="Hospital Contact Number *">
-  <textarea id="address" placeholder="Hospital Address *"></textarea>
+  <input id="address" placeholder="Hospital Address *">
   <input id="logo" placeholder="Hospital Logo URL (optional)">
 
-  <button onclick="onboard()">Create Hospital Workspace</button>
+  <button onclick="onboard()">Onboard Hospital</button>
 
-  <div id="out" class="result" style="display:none;"></div>
-
-  <div class="small">
-    By onboarding, hospital consents to use of anonymised data by Jan Swasthya Seva
-    for service improvement and research.
-  </div>
+  <div class="result" id="result"></div>
 </div>
 
 <script>
-const BACKEND = "https://script.google.com/macros/s/AKfycbx_gAByhgJTy9k7KcS983n3vWpoeI2w-QTj0Uq9xZqaCNbWZsUeyX6UngNdL-5L6XJX/exec";
-const BASE = "https://janswasthyaseva.github.io/jss/";
+const WEBAPP_URL = "https://script.google.com/macros/s/AKfycbx_gAByhgJTy9k7KcS983n3vWpoeI2w-QTj0Uq9xZqaCNbWZsUeyX6UngNdL-5L6XJX/exec";
 
 function onboard() {
-  const name = document.getElementById("name").value.trim();
-  const contact = document.getElementById("contact").value.trim();
-  const address = document.getElementById("address").value.trim();
-  const logo = document.getElementById("logo").value.trim();
-
-  if (!name || !contact || !address) {
+  if (!name.value || !contact.value || !address.value) {
     alert("Please fill all mandatory fields");
     return;
   }
 
-  fetch(BACKEND, {
+  const hospitalId = "HSP-" + Date.now();
+
+  const payload = {
+    hospital_id: hospitalId,
+    hospital_name: name.value.trim(),
+    hospital_contact: contact.value.trim(),
+    hospital_address: address.value.trim(),
+    hospital_logo: logo.value.trim()
+  };
+
+  fetch(WEBAPP_URL, {
     method: "POST",
-    body: JSON.stringify({
-      action: "ONBOARD_HOSPITAL",
-      name,
-      contact,
-      address,
-      logo
-    })
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(payload)
   })
   .then(r => r.json())
   .then(d => {
-    if (!d.hospital_id) {
-      alert("Error onboarding hospital");
-      return;
+    if (d.status === "saved") {
+      const link =
+        "https://janswasthyaseva.github.io/jss/admission.html?hid=" + hospitalId;
+
+      result.innerHTML =
+        "<b>Hospital Onboarded ✅</b><br><br>" +
+        "Hospital ID: <b>" + hospitalId + "</b><br><br>" +
+        "Access Link:<br><a href='" + link + "' target='_blank'>" + link + "</a>";
+    } else {
+      alert(d.error || "Error onboarding hospital");
     }
-
-    const hid = d.hospital_id;
-
-    const admission = BASE + "admission.html?hid=" + hid;
-    const doctor = BASE + "doctor.html?hid=" + hid;
-    const discharge = BASE + "discharge.html?hid=" + hid;
-    const admin = BASE + "admin.html?hid=" + hid;
-
-    document.getElementById("out").style.display = "block";
-    document.getElementById("out").innerHTML = `
-      <b>Hospital ID:</b> ${hid}<br><br>
-      <b>Admission Desk:</b><br>${admission}<br><br>
-      <b>Doctor / Nurse:</b><br>${doctor}<br><br>
-      <b>Discharge Desk:</b><br>${discharge}<br><br>
-      <b>Hospital Admin:</b><br>${admin}<br><br>
-      <b>Instruction:</b> Bookmark these links. Do not share outside hospital.
-    `;
   })
-  .catch(() => alert("Network error"));
+  .catch(() => alert("Network / backend error"));
 }
 </script>
 
