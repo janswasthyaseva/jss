@@ -11,27 +11,24 @@
       margin: 0;
       padding: 0;
     }
-
     .card {
-      max-width: 420px;
-      margin: 60px auto;
-      background: #fff;
-      padding: 25px;
+      max-width: 460px;
+      margin: 40px auto;
+      background: #ffffff;
+      padding: 24px;
       border-radius: 10px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+      box-shadow: 0 2px 12px rgba(0,0,0,0.12);
     }
-
     h2 {
       text-align: center;
       margin-bottom: 5px;
     }
-
-    p {
+    h4 {
       text-align: center;
-      color: #666;
-      font-size: 14px;
+      font-weight: normal;
+      color: #555;
+      margin-top: 0;
     }
-
     input {
       width: 100%;
       padding: 12px;
@@ -40,23 +37,31 @@
       border-radius: 6px;
       border: 1px solid #ccc;
     }
-
     button {
       width: 100%;
       padding: 14px;
       margin-top: 18px;
-      font-size: 16px;
-      background: #005eff;
+      background: #007bff;
       color: #fff;
       border: none;
       border-radius: 6px;
+      font-size: 16px;
       cursor: pointer;
     }
-
+    button:hover {
+      background: #0056b3;
+    }
+    .note {
+      font-size: 12px;
+      color: #666;
+      margin-top: 12px;
+      text-align: center;
+    }
     .result {
-      margin-top: 20px;
+      margin-top: 18px;
       font-size: 14px;
-      word-break: break-all;
+      word-break: break-word;
+      text-align: center;
     }
   </style>
 </head>
@@ -65,23 +70,34 @@
 
 <div class="card">
   <h2>Hospital Onboarding</h2>
-  <p>Jan Swasthya Seva</p>
+  <h4>Jan Swasthya Seva</h4>
 
-  <input id="name" placeholder="Hospital Name *">
-  <input id="contact" placeholder="Hospital Contact Number *">
-  <input id="address" placeholder="Hospital Address *">
-  <input id="logo" placeholder="Hospital Logo URL (optional)">
+  <input id="hospitalName" placeholder="Hospital Name *">
+  <input id="hospitalContact" placeholder="Hospital Contact Number *">
+  <input id="hospitalAddress" placeholder="Hospital Address *">
+  <input id="hospitalLogo" placeholder="Hospital Logo URL (optional)">
 
-  <button onclick="onboard()">Onboard Hospital</button>
+  <button onclick="onboardHospital()">Onboard Hospital</button>
+
+  <div class="note">
+    By onboarding, hospital consents to share anonymised data with Jan Swasthya Seva
+    for service improvement & research.
+  </div>
 
   <div class="result" id="result"></div>
 </div>
 
 <script>
-const WEBAPP_URL = "https://script.google.com/macros/s/AKfycbx_gAByhgJTy9k7KcS983n3vWpoeI2w-QTj0Uq9xZqaCNbWZsUeyX6UngNdL-5L6XJX/exec";
+const WEBAPP_URL =
+"https://script.google.com/macros/s/AKfycbx_gAByhgJTy9k7KcS983n3vWpoeI2w-QTj0Uq9xZqaCNbWZsUeyX6UngNdL-5L6XJX/exec";
 
-function onboard() {
-  if (!name.value || !contact.value || !address.value) {
+function onboardHospital() {
+  const name = hospitalName.value.trim();
+  const contact = hospitalContact.value.trim();
+  const address = hospitalAddress.value.trim();
+  const logo = hospitalLogo.value.trim();
+
+  if (!name || !contact || !address) {
     alert("Please fill all mandatory fields");
     return;
   }
@@ -90,10 +106,10 @@ function onboard() {
 
   const payload = {
     hospital_id: hospitalId,
-    hospital_name: name.value.trim(),
-    hospital_contact: contact.value.trim(),
-    hospital_address: address.value.trim(),
-    hospital_logo: logo.value.trim()
+    hospital_name: name,
+    hospital_contact: contact,
+    hospital_address: address,
+    hospital_logo: logo || ""
   };
 
   fetch(WEBAPP_URL, {
@@ -103,21 +119,25 @@ function onboard() {
     },
     body: JSON.stringify(payload)
   })
-  .then(r => r.json())
-  .then(d => {
-    if (d.status === "saved") {
-      const link =
+  .then(res => res.json())
+  .then(data => {
+    if (data.status === "saved") {
+      const admissionLink =
         "https://janswasthyaseva.github.io/jss/admission.html?hid=" + hospitalId;
 
-      result.innerHTML =
-        "<b>Hospital Onboarded ✅</b><br><br>" +
-        "Hospital ID: <b>" + hospitalId + "</b><br><br>" +
-        "Access Link:<br><a href='" + link + "' target='_blank'>" + link + "</a>";
+      alert("Hospital onboarded successfully");
+
+      result.innerHTML = `
+        <b>Admission Desk Link</b><br><br>
+        <a href="${admissionLink}" target="_blank">${admissionLink}</a>
+      `;
     } else {
-      alert(d.error || "Error onboarding hospital");
+      alert(data.error || "Error onboarding hospital");
     }
   })
-  .catch(() => alert("Network / backend error"));
+  .catch(() => {
+    alert("Network or server error");
+  });
 }
 </script>
 
