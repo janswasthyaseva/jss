@@ -1,184 +1,166 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>JSS – Doctor Console</title>
+  <title>Admission Desk – Jan Swasthya Seva</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
   <style>
-    body { font-family: Arial; background:#f4f6f8; padding:15px; }
-    h2 { margin-bottom:10px; }
-    .card { background:#fff; padding:15px; border-radius:6px; margin-bottom:15px; }
-    label { font-weight:bold; display:block; margin-top:10px; }
-    input, select, textarea {
-      width:100%; padding:10px; margin-top:5px; font-size:15px;
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f6f8;
+      padding: 20px;
+    }
+    .card {
+      background: #fff;
+      max-width: 520px;
+      margin: auto;
+      padding: 20px;
+      border-radius: 8px;
+    }
+    h2 {
+      text-align: center;
+      margin-bottom: 10px;
+    }
+    .hospital {
+      text-align: center;
+      font-size: 14px;
+      color: #555;
+      margin-bottom: 20px;
+    }
+    input, select {
+      width: 100%;
+      padding: 10px;
+      margin: 8px 0;
+      font-size: 15px;
     }
     button {
-      margin-top:12px;
-      padding:12px;
-      width:100%;
-      background:#007bff;
-      color:#fff;
-      border:none;
-      border-radius:6px;
-      font-size:16px;
+      width: 100%;
+      padding: 12px;
+      font-size: 16px;
+      background: #28a745;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
     }
-    .secondary {
-      background:#6c757d;
+    button:disabled {
+      background: #999;
     }
-    .note {
-      border-left:4px solid #007bff;
-      padding-left:10px;
-      margin-bottom:10px;
-      font-size:14px;
+    .result {
+      margin-top: 20px;
+      background: #e8f7ec;
+      padding: 15px;
+      border-radius: 6px;
+      text-align: center;
+      font-size: 15px;
     }
-    .small { font-size:12px; color:#555; }
+    .pid {
+      font-size: 18px;
+      font-weight: bold;
+      margin-top: 10px;
+    }
   </style>
 </head>
 
 <body>
 
-<h2>Doctor Console</h2>
-
 <div class="card">
-  <label>Hospital ID</label>
-  <input id="hid" placeholder="Hospital ID">
+  <h2>Admission Desk</h2>
+  <div class="hospital" id="hospitalInfo">Loading hospital…</div>
 
-  <label>Patient</label>
-  <select id="patientSelect"></select>
-
-  <label>Doctor Name</label>
-  <input id="doctorName">
-
-  <label>Registration Number</label>
-  <input id="doctorReg">
-
-  <label>Visit Type</label>
-  <select id="noteType">
-    <option>OPD</option>
-    <option>IPD</option>
+  <input id="name" placeholder="Patient Name *">
+  <input id="age" type="number" placeholder="Age *">
+  <select id="gender">
+    <option value="">Gender *</option>
+    <option>Male</option>
+    <option>Female</option>
+    <option>Other</option>
   </select>
-</div>
 
-<div class="card">
-  <h3>Clinical Note</h3>
+  <button id="btn" onclick="admit()">Admit Patient</button>
 
-  <button class="secondary" onclick="copyLastNote()">
-    Copy From Last Note
-  </button>
-
-  <label>Chief Complaints / Findings</label>
-  <textarea id="noteContent" rows="6"></textarea>
-
-  <button onclick="saveNote()">Save Note</button>
-</div>
-
-<div class="card">
-  <h3>Previous Notes</h3>
-  <div id="notes"></div>
+  <div id="out" class="result" style="display:none;"></div>
 </div>
 
 <script>
-const WEBAPP_URL =
-  "https://script.google.com/macros/s/AKfycbx_gAByhgJTy9k7KcS983n3vWpoeI2w-QTj0Uq9xZqaCNbWZsUeyX6UngNdL-5L6XJX/exec";
+const BACKEND = "https://script.google.com/macros/s/AKfycbx_gAByhgJTy9k7KcS983n3vWpoeI2w-QTj0Uq9xZqaCNbWZsUeyX6UngNdL-5L6XJX/exec";
+const params = new URLSearchParams(window.location.search);
+const hid = params.get("hid");
 
-/* ================= LOAD PATIENTS ================= */
-async function loadPatients() {
-  if (!hid.value) return;
+if (!hid) {
+  alert("Invalid hospital link");
+}
 
-  const res = await fetch(
-    `${WEBAPP_URL}?action=ADMIN_PATIENTS&hospital_id=${hid.value}`
-  );
-  const data = await res.json();
-
-  patientSelect.innerHTML = "";
-  data.forEach(p => {
-    const opt = document.createElement("option");
-    opt.value = p.system_patient_id;
-    opt.text = `${p.system_patient_id} – ${p.name}`;
-    patientSelect.appendChild(opt);
+/* Load hospital details */
+fetch(BACKEND + "?action=GET_HOSPITAL&hid=" + hid)
+  .then(r => r.json())
+  .then(d => {
+    if (d.error) throw d.error;
+    document.getElementById("hospitalInfo").innerText =
+      d.name + " | " + d.address;
+  })
+  .catch(() => {
+    document.getElementById("hospitalInfo").innerText =
+      "Hospital information unavailable";
   });
 
-  loadNotes();
-}
+let submitting = false;
 
-hid.onchange = loadPatients;
-patientSelect.onchange = loadNotes;
+function admit() {
+  if (submitting) return;
 
-/* ================= LOAD NOTES ================= */
-async function loadNotes() {
-  if (!patientSelect.value) return;
+  const name = document.getElementById("name").value.trim();
+  const age = document.getElementById("age").value.trim();
+  const gender = document.getElementById("gender").value;
 
-  const res = await fetch(
-    `${WEBAPP_URL}?action=DOCTOR_GET_NOTES&patient_id=${patientSelect.value}`
-  );
-  const data = await res.json();
-
-  notes.innerHTML = "";
-  data.reverse().forEach(n => {
-    const div = document.createElement("div");
-    div.className = "note";
-    div.innerHTML = `
-      <div class="small">
-        ${n.time} | ${n.doctor} (${n.type})
-      </div>
-      <div>${n.content}</div>
-    `;
-    notes.appendChild(div);
-  });
-}
-
-/* ================= COPY LAST NOTE ================= */
-async function copyLastNote() {
-  if (!patientSelect.value) {
-    alert("Select a patient first");
+  if (!name || !age || !gender) {
+    alert("Please fill all mandatory fields");
     return;
   }
 
-  const res = await fetch(
-    `${WEBAPP_URL}?action=DOCTOR_GET_NOTES&patient_id=${patientSelect.value}`
-  );
-  const data = await res.json();
+  submitting = true;
+  document.getElementById("btn").disabled = true;
 
-  if (!data || data.length === 0) {
-    alert("No previous note found");
-    return;
-  }
-
-  const last = data[data.length - 1];
-  noteContent.value = last.content;
-}
-
-/* ================= SAVE NOTE ================= */
-async function saveNote() {
-  if (!hid.value || !patientSelect.value || !noteContent.value) {
-    alert("Fill required fields");
-    return;
-  }
-
-  const payload = {
-    action: "DOCTOR_SAVE_NOTE",
-    hospital_id: hid.value,
-    system_patient_id: patientSelect.value,
-    note_type: noteType.value,
-    content: noteContent.value,
-    doctor_name: doctorName.value,
-    doctor_reg: doctorReg.value
-  };
-
-  const res = await fetch(WEBAPP_URL, {
+  fetch(BACKEND, {
     method: "POST",
-    body: JSON.stringify(payload)
+    body: JSON.stringify({
+      action: "ADMIT_PATIENT",
+      hospital_id: hid,
+      name,
+      age,
+      gender
+    })
+  })
+  .then(r => r.json())
+  .then(d => {
+    if (!d.system_patient_id) {
+      alert("Admission failed");
+      submitting = false;
+      document.getElementById("btn").disabled = false;
+      return;
+    }
+
+    document.getElementById("out").style.display = "block";
+    document.getElementById("out").innerHTML = `
+      <div>Patient admitted successfully</div>
+      <div class="pid">Patient ID: ${d.system_patient_id}</div>
+      <div style="margin-top:8px;font-size:13px;">
+        Please note this ID on the patient file.
+      </div>
+    `;
+
+    // Reset form for next patient
+    document.getElementById("name").value = "";
+    document.getElementById("age").value = "";
+    document.getElementById("gender").value = "";
+    document.getElementById("btn").disabled = false;
+    submitting = false;
+  })
+  .catch(() => {
+    alert("Network error");
+    submitting = false;
+    document.getElementById("btn").disabled = false;
   });
-
-  const out = await res.json();
-
-  if (out.status === "SAVED") {
-    noteContent.value = "";
-    loadNotes();
-    alert("Note saved");
-  } else {
-    alert(out.error || "Save failed");
-  }
 }
 </script>
 
