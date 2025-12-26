@@ -1,240 +1,191 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Patient Discharge – Jan Swasthya Seva</title>
+  <title>Discharge Desk – Jan Swasthya Seva</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
   <style>
-    body { font-family: Arial; margin:20px; background:#f8f9fa; }
-    h2 { border-bottom:1px solid #ccc; padding-bottom:5px; }
-
-    .section {
-      background:#fff;
-      padding:15px;
-      margin-bottom:20px;
-      border-radius:6px;
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f6f8;
+      padding: 20px;
     }
-
-    label {
-      font-weight:bold;
-      display:block;
-      margin-top:10px;
+    .card {
+      background: #fff;
+      max-width: 720px;
+      margin: auto;
+      padding: 20px;
+      border-radius: 8px;
     }
-
-    input, textarea, select {
-      width:100%;
-      padding:10px;
-      margin-top:5px;
-      font-size:15px;
+    h2 {
+      text-align: center;
+      margin-bottom: 10px;
     }
-
+    select, textarea, input {
+      width: 100%;
+      padding: 10px;
+      margin: 8px 0;
+      font-size: 14px;
+    }
+    textarea {
+      min-height: 80px;
+    }
     button {
-      width:100%;
-      padding:15px;
-      font-size:18px;
-      background:#007bff;
-      color:#fff;
-      border:none;
-      border-radius:6px;
-      cursor:pointer;
+      width: 100%;
+      padding: 12px;
+      font-size: 16px;
+      background: #dc3545;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
     }
-
+    button:disabled {
+      background: #999;
+    }
+    .warn {
+      background: #fff3cd;
+      padding: 10px;
+      border-radius: 6px;
+      margin-bottom: 10px;
+      font-size: 14px;
+      color: #856404;
+    }
+    .summary {
+      margin-top: 20px;
+      background: #f1f3f5;
+      padding: 15px;
+      border-radius: 6px;
+    }
     @media print {
-      button { display:none; }
-      body { background:#fff; }
+      button, .warn, select {
+        display: none;
+      }
+      body {
+        background: #fff;
+      }
     }
   </style>
 </head>
 
 <body>
 
-<h2>Discharge Summary</h2>
+<div class="card">
+  <h2>Discharge Desk</h2>
 
-<!-- STATUS BANNER -->
-<div id="statusBanner"
-     style="display:none;
-            background:#e8f5e9;
-            color:#2e7d32;
-            padding:10px;
-            margin-bottom:15px;
-            border-radius:6px;
-            font-weight:bold;">
-  ✔ Discharge completed. This record is now read-only.
-</div>
+  <div class="warn">
+    ⚠️ Discharge is irreversible. Patient record will be locked.
+  </div>
 
-<!-- HOSPITAL -->
-<div class="section">
-  <label>Hospital Name</label>
-  <input id="hospitalName" readonly>
-</div>
+  <select id="patientSelect">
+    <option value="">Select Patient</option>
+  </select>
 
-<!-- PATIENT SELECTION -->
-<div class="section">
-  <label>Hospital Patient ID *</label>
-  <select id="hospitalPatientId"></select>
-</div>
+  <input id="pname" placeholder="Patient Name" readonly>
 
-<!-- CLINICAL SUMMARY -->
-<div class="section">
-  <h3>Clinical Summary</h3>
+  <textarea id="diagnosis" placeholder="Final Diagnosis *"></textarea>
+  <textarea id="medicines" placeholder="Medicines (dose, frequency, duration) *"></textarea>
+  <textarea id="followup" placeholder="Follow-up Advice *"></textarea>
 
-  <label>Final Diagnosis *</label>
-  <textarea id="diagnosis"></textarea>
-
-  <label>Medicines *</label>
-  <textarea id="medicines"></textarea>
-
-  <label>Follow-up Advice</label>
-  <textarea id="followup"></textarea>
-
-  <label>Risk Level *</label>
   <select id="risk">
-    <option value="">Select</option>
+    <option value="">Risk Level *</option>
     <option>Low</option>
     <option>Medium</option>
     <option>High</option>
   </select>
+
+  <button id="btn" onclick="discharge()">Generate Discharge Summary</button>
+
+  <div id="out" class="summary" style="display:none;"></div>
 </div>
-
-<!-- DOCTOR -->
-<div class="section">
-  <h3>Treating Doctor</h3>
-
-  <label>Doctor Name *</label>
-  <input id="doctorName">
-
-  <label>Registration Number *</label>
-  <input id="doctorReg">
-</div>
-
-<!-- DISCHARGE TIME -->
-<div class="section">
-  <label>Discharge Date & Time</label>
-  <input id="dischargeTime" readonly>
-</div>
-
-<button onclick="finaliseDischarge()">Generate / Download / Print PDF</button>
 
 <script>
-/* ================= CONFIG ================= */
-const WEBAPP_URL =
-  "https://script.google.com/macros/s/AKfycbx_gAByhgJTy9k7KcS983n3vWpoeI2w-QTj0Uq9xZqaCNbWZsUeyX6UngNdL-5L6XJX/exec";
+const BACKEND = "https://script.google.com/macros/s/AKfycbx_gAByhgJTy9k7KcS983n3vWpoeI2w-QTj0Uq9xZqaCNbWZsUeyX6UngNdL-5L6XJX/exec";
+const BASE = "https://janswasthyaseva.github.io/jss/";
+const params = new URLSearchParams(window.location.search);
+const hid = params.get("hid");
 
-const hid = new URLSearchParams(window.location.search).get("hid");
+/* Load patients */
+fetch(BACKEND + "?action=ADMIN_PATIENTS&hospital_id=" + hid)
+  .then(r => r.json())
+  .then(list => {
+    list.forEach(p => {
+      if (p.status === "UNDER_TREATMENT") {
+        const o = document.createElement("option");
+        o.value = p.id;
+        o.textContent = p.name + " (" + p.id + ")";
+        document.getElementById("patientSelect").appendChild(o);
+      }
+    });
+  });
 
-/* ================= INIT ================= */
-document.getElementById("dischargeTime").value =
-  new Date().toLocaleString();
+document.getElementById("patientSelect").onchange = function () {
+  document.getElementById("pname").value =
+    this.options[this.selectedIndex].text.split(" (")[0];
+};
 
-/* ================= LOAD HOSPITAL ================= */
-async function loadHospital() {
-  const res = await fetch(WEBAPP_URL + "?hid=" + hid);
-  const out = await res.json();
-  if (out.name) hospitalName.value = out.name;
-}
+let submitting = false;
 
-/* ================= LOAD ADMITTED PATIENTS ================= */
-async function loadPatients() {
-  const res = await fetch(
-    WEBAPP_URL +
-      "?action=getAdmittedPatients&hospital_id=" + hid
-  );
-  const out = await res.json();
+function discharge() {
+  if (submitting) return;
 
-  const sel = document.getElementById("hospitalPatientId");
-  sel.innerHTML = "";
+  const pid = document.getElementById("patientSelect").value;
+  const diagnosis = document.getElementById("diagnosis").value.trim();
+  const medicines = document.getElementById("medicines").value.trim();
+  const followup = document.getElementById("followup").value.trim();
+  const risk = document.getElementById("risk").value;
 
-  if (out.status !== "success" || out.data.length === 0) {
-    const o = document.createElement("option");
-    o.textContent = "No admitted patients";
-    o.disabled = true;
-    sel.appendChild(o);
+  if (!pid || !diagnosis || !medicines || !followup || !risk) {
+    alert("Please fill all mandatory fields");
     return;
   }
 
-  out.data.forEach(p => {
-    const o = document.createElement("option");
-    o.value = p.hospital_patient_id;
-    o.textContent =
-      p.hospital_patient_id + " — " + p.patient_name;
-    sel.appendChild(o);
-  });
+  if (!confirm("Confirm discharge? This cannot be undone.")) return;
 
-  loadAutoFill(sel.value);
-}
+  submitting = true;
+  document.getElementById("btn").disabled = true;
 
-/* ================= AUTO-FILL FROM LAST CLINICAL NOTE ================= */
-async function loadAutoFill(pid) {
-  if (!pid) return;
-
-  const res = await fetch(
-    WEBAPP_URL +
-      "?action=getDischargeAutoFill" +
-      "&hospital_id=" + hid +
-      "&hospital_patient_id=" + pid
-  );
-
-  const out = await res.json();
-
-  if (out.status === "success" && out.data.hasData) {
-    diagnosis.value = out.data.diagnosis || "";
-    medicines.value = out.data.medicines || "";
-    doctorName.value = out.data.doctor_name || "";
-    doctorReg.value = out.data.doctor_reg_no || "";
-  } else {
-    diagnosis.value = "";
-    medicines.value = "";
-    doctorName.value = "";
-    doctorReg.value = "";
-  }
-}
-
-/* ================= LOCK UI AFTER DISCHARGE ================= */
-function lockDischargeUI() {
-  document
-    .querySelectorAll("input, textarea, select, button")
-    .forEach(el => el.disabled = true);
-
-  document.getElementById("statusBanner").style.display = "block";
-}
-
-/* ================= FINALISE DISCHARGE ================= */
-async function finaliseDischarge() {
-  const payload = {
-    hospital_id: hid,
-    hospital_patient_id: hospitalPatientId.value,
-    diagnosis: diagnosis.value,
-    medicines: medicines.value,
-    followup: followup.value,
-    risk: risk.value,
-    doctor_name: doctorName.value,
-    doctor_reg_no: doctorReg.value,
-    discharge_datetime: new Date().toISOString()
-  };
-
-  const res = await fetch(WEBAPP_URL, {
+  fetch(BACKEND, {
     method: "POST",
-    body: JSON.stringify(payload)
-  });
+    body: JSON.stringify({
+      action: "DISCHARGE_PATIENT",
+      hospital_id: hid,
+      system_patient_id: pid,
+      name: document.getElementById("pname").value,
+      diagnosis,
+      medicines,
+      followup,
+      risk
+    })
+  })
+  .then(r => r.json())
+  .then(d => {
+    if (!d.token) {
+      alert("Discharge failed");
+      return;
+    }
 
-  const out = await res.json();
+    const patientLink = BASE + "patient.html?token=" + d.token;
 
-  if (out.status === "DISCHARGED") {
-    lockDischargeUI();
+    document.getElementById("out").style.display = "block";
+    document.getElementById("out").innerHTML = `
+      <h3>Discharge Summary</h3>
+      <b>Patient:</b> ${document.getElementById("pname").value}<br>
+      <b>Diagnosis:</b> ${diagnosis}<br>
+      <b>Medicines:</b><br>${medicines.replace(/\n/g,"<br>")}<br><br>
+      <b>Follow-up:</b><br>${followup.replace(/\n/g,"<br>")}<br><br>
+      <b>Risk Level:</b> ${risk}<br><br>
+      <b>Patient Portal:</b><br>${patientLink}<br><br>
+      <small>Valid for 60 days</small>
+    `;
+
     window.print();
-  } else {
-    alert(out.error || "Discharge failed");
-  }
+  })
+  .finally(() => {
+    submitting = false;
+    document.getElementById("btn").disabled = false;
+  });
 }
-
-/* ================= EVENTS ================= */
-hospitalPatientId.addEventListener("change", function () {
-  loadAutoFill(this.value);
-});
-
-/* ================= BOOT ================= */
-loadHospital();
-loadPatients();
 </script>
 
 </body>
