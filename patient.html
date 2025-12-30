@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>JSS Patient Portal</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body>
+
+<h3>Jan Swasthya Seva – Patient</h3>
+
+<div id="loginBox">
+  <input id="pid" placeholder="Patient ID"><br><br>
+  <input id="pass" type="password" placeholder="Passkey"><br><br>
+  <button onclick="login()">Login</button>
+</div>
+
+<div id="panel" style="display:none">
+  <p><b>Status:</b> <span id="state"></span></p>
+  <img id="qr" width="180"><br><br>
+
+  <button id="helpBtn" onclick="sendRequest('HELP')">Help</button>
+  <button id="emgBtn" onclick="sendRequest('EMERGENCY')">Emergency</button><br><br>
+  <button id="cancelBtn" onclick="cancel()">Cancel Request</button>
+
+  <p id="msg"></p>
+</div>
+
+<script>
+function login() {
+  google.script.run.withSuccessHandler(function(data){
+    if(!data){
+      alert("Invalid ID or Passkey");
+      return;
+    }
+    loginBox.style.display = "none";
+    panel.style.display = "block";
+    state.innerText = data.state;
+    qr.src = data.qr;
+
+    const disabled = data.state !== "S";
+    helpBtn.disabled = disabled;
+    emgBtn.disabled = disabled;
+    cancelBtn.style.display = disabled ? "inline" : "none";
+  }).patientLogin(pid.value, pass.value);
+}
+
+function sendRequest(type){
+  google.script.run.raiseRequest(pid.value, type);
+  msg.innerText = "Request sent. Please wait.";
+  helpBtn.disabled = true;
+  emgBtn.disabled = true;
+}
+
+function cancel(){
+  google.script.run.cancelRequest(pid.value);
+  msg.innerText = "Request cancelled.";
+  helpBtn.disabled = false;
+  emgBtn.disabled = false;
+}
+</script>
+
+</body>
+</html>
