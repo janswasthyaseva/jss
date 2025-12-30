@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>JSS Nurse Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body>
+
+<h3>JSS – Nurse Dashboard</h3>
+
+<p>Scan patient QR / Enter Patient ID</p>
+
+<button onclick="scan()">Scan Patient</button>
+
+<p id="msg"></p>
+
+<script>
+const NURSE_ID = "NRXXXX";   // replace once per nurse login system
+
+function scan(){
+  const pid = prompt("Enter Patient ID");
+  if(!pid) return;
+
+  google.script.run.scanQR(pid, "NURSE", NURSE_ID);
+  msg.innerText = "Scan recorded.";
+}
+</script>
+
+</body>
+</html>
